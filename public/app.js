@@ -1005,3 +1005,9 @@ try {
 } catch {}
 
 render();
+function resetDemo() {
+  if (confirm("Reset AcadTrack to its original demo state?")) {
+    localStorage.removeItem("acadtrack_v4");
+    location.reload();
+  }
+}

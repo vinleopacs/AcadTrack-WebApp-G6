@@ -911,4 +911,19 @@ main {
   .class-card {
     flex-wrap: wrap;
   }
+  .btn.reset-demo {
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--red-bg);
+  color: var(--red);
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s ease;
+}
+
+.btn.reset-demo:hover {
+  background: #f5d8d6;
+}
 }

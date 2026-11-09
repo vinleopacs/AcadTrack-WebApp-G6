@@ -1,5 +1,3 @@
-const KEY = 'acadtrack_v4';
-const SESSION = KEY + '_user';
 
 const pad = n => String(n).padStart(2, '0');
 const localDate = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -45,79 +43,16 @@ const ICONS = {
   close: '<path d="M6 6l12 12M18 6 6 18"/>',
   back: '<path d="m15 5-7 7 7 7"/>',
   file: '<path d="M7 3h7l4 4v14H7z"/>',
-  logout: '<path d="M10 4H5v16h5"/><path d="m15 8 4 4-4 4M19 12H9"/>'
+  logout: '<path d="M10 4H5v16h5"/><path d="m15 8 4 4-4 4M19 12H9"/>',
+  link: '<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>'
 };
 
 const icon = (name, size = 22) =>
   `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
 
-const seed = () => ({
-  counter: 100,
+let db = { users: [], classes: [], enrollments: [], assignments: [], submissions: [], notifications: [], attendance: [], materials: [] };
 
-  users: [
-    { id: 1, name: 'Ana Admin', email: 'admin@acadtrack.edu', password: '123456', role: 'Admin', active: 1 },
-    { id: 2, name: 'Nicezel Jamero', email: 'teacher@acadtrack.edu', password: '123456', role: 'Teacher', active: 1 },
-    { id: 3, name: 'Farnker Villaruel', email: 'student@acadtrack.edu', password: '123456', role: 'Student', active: 1 },
-    { id: 4, name: 'Leo Reyes', email: 'leo@acadtrack.edu', password: '123456', role: 'Student', active: 1 },
-    { id: 5, name: 'Jeric Tan', email: 'jeric@acadtrack.edu', password: '123456', role: 'Teacher', active: 1 },
-    { id: 6, name: 'David Yap', email: 'david@acadtrack.edu', password: '123456', role: 'Teacher', active: 1 }
-  ],
-
-  classes: [
-    { id: 1, code: 'CIS2203N', name: 'CIS 2203N — Mobile Development', schedule: 'Mon / Wed, 9:00–10:30 AM', teacherId: 6, attendanceCode: 'ABC123' },
-    { id: 2, code: 'CIS2105', name: 'CIS 2105 — Networking II', schedule: 'Tue / Thu, 1:00–2:30 PM', teacherId: 5, attendanceCode: 'NET105' },
-    { id: 3, code: 'IT2204', name: 'IT 2204 — Database Systems', schedule: 'Fri, 8:00–11:00 AM', teacherId: 2, attendanceCode: 'DBS204' },
-    { id: 4, code: 'BSIT2A', name: 'BSIT 2 - Section A', schedule: 'Mon / Wed, 9:00–10:30 AM', teacherId: 2, attendanceCode: 'BSIT2A' }
-  ],
-
-  enrollments: [[3, 1], [3, 2], [3, 3], [4, 3], [4, 4]],
-
-  assignments: [
-    { id: 1, classId: 2, title: 'Algorithms quiz review', description: 'Review the algorithm topics covered before the quiz.', due: day(-3), posted: day(-12), attachment: '', teacherId: 5, deleted: 0 },
-    { id: 2, classId: 3, title: 'Database ER diagram', description: 'Draw the ER diagram for the case study.', due: day(-1), posted: day(-10), attachment: 'er_guide.pdf', teacherId: 2, deleted: 0 },
-    { id: 3, classId: 2, title: 'Lab report 2', description: 'Write up your findings from the subnetting lab, including the addressing table and a short reflection.', due: day(1), posted: day(-8), attachment: 'lab2_template.docx', teacherId: 5, deleted: 0 },
-    { id: 4, classId: 3, title: 'Chapter 4 problem set', description: 'Answer the Chapter 4 problem set.', due: day(2), posted: day(-3), attachment: '', teacherId: 2, deleted: 0 },
-    { id: 5, classId: 1, title: 'Essay draft', description: 'Submit the first draft of your essay.', due: day(9), posted: day(-6), attachment: '', teacherId: 6, deleted: 0 },
-    { id: 6, classId: 4, title: 'Activity 1', description: 'Complete the assigned activity.', due: day(4), posted: day(-1), attachment: '', teacherId: 2, deleted: 0 }
-  ],
-
-  submissions: [
-    { id: 1, assignmentId: 1, studentId: 3, status: 'PENDING' },
-    { id: 2, assignmentId: 2, studentId: 3, status: 'COMPLETED' },
-    { id: 3, assignmentId: 3, studentId: 3, status: 'COMPLETED' },
-    { id: 4, assignmentId: 4, studentId: 3, status: 'PENDING' },
-    { id: 5, assignmentId: 5, studentId: 3, status: 'PENDING' },
-    { id: 6, assignmentId: 2, studentId: 4, status: 'PENDING' },
-    { id: 7, assignmentId: 4, studentId: 4, status: 'PENDING' },
-    { id: 8, assignmentId: 6, studentId: 4, status: 'PENDING' }
-  ],
-
-  notifications: [
-    { id: 1, userId: 3, assignmentId: 5, title: 'New assignment posted: Essay draft.', message: 'CIS 2203N — Mobile Development', type: 'NEW', read: 1, at: stamp(-6, 8, 5) },
-    { id: 2, userId: 3, assignmentId: 3, title: 'Assignment marked as completed.', message: 'Lab report 2', type: 'DONE', read: 1, at: stamp(-4, 16, 40) },
-    { id: 3, userId: 3, assignmentId: 3, title: 'Your teacher updated Lab report 2.', message: 'CIS 2105 — Networking II', type: 'UPDATE', read: 0, at: stamp(-1, 14, 20) },
-    { id: 4, userId: 3, assignmentId: 2, title: 'Assignment marked as completed.', message: 'Database ER diagram', type: 'DONE', read: 0, at: stamp(-2, 21, 28) },
-    { id: 5, userId: 3, assignmentId: 4, title: 'Chapter 4 problem set is due in 2 days.', message: 'IT 2204 — Database Systems', type: 'REMINDER', read: 0, at: stamp(0, 9, 0) }
-  ],
-
-  attendance: []
-});
-
-const load = () => {
-  try {
-    return JSON.parse(localStorage.getItem(KEY)) || seed();
-  } catch {
-    return seed();
-  }
-};
-
-let db = load();
-
-const save = () => {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(db));
-  } catch {}
-};
+let config = { googleClientId: '', domain: 'usc.edu.ph', demo: false };
 
 const state = {
   user: null,
@@ -127,13 +62,35 @@ const state = {
   modal: null,
   query: '',
   filter: '',
-  order: 'soon'
+  order: 'soon',
+  seen: null
+};
+
+class Invalid extends Error {}
+
+const api = async (method, path, body) => {
+  const res = await fetch('/api' + path, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+    credentials: 'same-origin'
+  });
+  const data = await res.json().catch(() => ({}));
+
+  if (res.status === 401 && path !== '/login') {
+    state.user = null;
+  }
+
+  if (!res.ok) {
+    throw new Invalid(data.error || 'Something went wrong. Please try again.');
+  }
+
+  return data;
 };
 
 const user = id => db.users.find(u => u.id == id);
 const klass = id => db.classes.find(c => c.id == id);
 const assignment = id => db.assignments.find(a => a.id == id);
-const nextId = () => ++db.counter;
 const value = id => document.getElementById(id).value;
 
 const displayName = u => (u.role === 'Teacher' ? 'Prof. ' + u.name : u.name);
@@ -147,31 +104,47 @@ const myClasses = () =>
     ? db.classes.filter(c => c.teacherId == state.user.id)
     : db.classes.filter(c => db.enrollments.some(e => e[0] == state.user.id && e[1] == c.id));
 
+const DAYS = { Su: 0, M: 1, T: 2, W: 3, Th: 4, F: 5, Sat: 6 };
+
+const toMin = t => {
+  const [, h, m, ap] = t.match(/(\d+):(\d+)\s*([AP])M/);
+  return (h % 12 + (ap === 'P' ? 12 : 0)) * 60 + +m;
+};
+
+const fmtMin = m => `${(Math.floor(m / 60) + 11) % 12 + 1}:${pad(m % 60)} ${m < 720 ? 'AM' : 'PM'}`;
+
+const fixOcr = text => text.replace(
+  /\b([\dOoIl]{1,2})\s*[:.]\s*([\dOoIl]{2})\s*([AaPp])\.?\s*[Mm]\b/g,
+  (_, h, m, ap) => `${h.replace(/[Oo]/g, '0').replace(/[Il]/g, '1')}:${m.replace(/[Oo]/g, '0').replace(/[Il]/g, '1')} ${ap.toUpperCase()}M`
+);
+
+const parseStudyLoad = text => fixOcr(text).split('\n').map(line => {
+  const m = line.match(/\b((?:Sat|Su|Th|M|T|W|F)(?:\s*(?:Sat|Su|Th|M|T|W|F))*)\s+(\d{1,2}:\d{2}\s*[AP]M)\s*[-–—]\s*(\d{1,2}:\d{2}\s*[AP]M)\s+(\S+)/);
+  if (!m) return null;
+  const before = line.slice(0, m.index);
+  const code = before.match(/[A-Z]{2,}(?:-[A-Z]+)?\s+(?:[A-Z]+-)?[A-Z\d]+(?=\s*$)/);
+  const group = before.match(/^\s*(\d+)/);
+  return {
+    group: group ? group[1] : '',
+    code: code ? code[0] : before.replace(/^\s*\d+\s+/, '').trim(),
+    dayText: m[1].match(/Sat|Su|Th|M|T|W|F/g).join(' '),
+    days: m[1].match(/Sat|Su|Th|M|T|W|F/g).map(d => DAYS[d]),
+    start: toMin(m[2]),
+    end: toMin(m[3]),
+    room: m[4],
+    faculty: line.slice(m.index + m[0].length).replace(/\s+\d+\.\d+\b.*$/, '').replace(/^\s*TC\b/, '').replace(/[.\s]+$/, '').trim()
+  };
+}).filter(r => r && r.code);
+
+const nowMin = () => new Date().getHours() * 60 + new Date().getMinutes();
+
+const classTime = c => `${c.dayText}, ${fmtMin(c.start)} – ${fmtMin(c.end)}`;
+
 const statusOf = (a, submission) => {
   if (!submission) return 'Active';
   if (submission.status === 'COMPLETED') return 'Completed';
   return a.due < day(0) ? 'Overdue' : 'Pending';
 };
-
-const notify = (userId, assignmentId, title, message, type) =>
-  db.notifications.push({
-    id: nextId(),
-    userId,
-    assignmentId,
-    title,
-    message,
-    type,
-    read: 0,
-    at: new Date().toISOString()
-  });
-
-const dueIn = due => {
-  const days = Math.round((new Date(due + 'T00:00') - new Date(day(0) + 'T00:00')) / 864e5);
-  if (days === 0) return 'today';
-  return days === 1 ? 'tomorrow' : `in ${days} days`;
-};
-
-class Invalid extends Error {}
 
 const required = (...values) => {
   if (!values.every(v => String(v || '').trim())) {
@@ -185,7 +158,7 @@ const assignmentRows = () => {
   const rows =
     state.user.role === 'Student'
       ? db.submissions
-          .filter(s => s.studentId == state.user.id && !assignment(s.assignmentId).deleted)
+          .filter(s => s.studentId == state.user.id && assignment(s.assignmentId))
           .map(s => ({
             a: assignment(s.assignmentId),
             status: statusOf(assignment(s.assignmentId), s)
@@ -220,12 +193,14 @@ const NAV = {
   Student: [
     ['assignments', 'Assignments', 'list'],
     ['notifications', 'Notifications', 'bell'],
+    ['attendance', 'Attendance', 'check'],
     ['classes', 'Classes', 'book'],
     ['profile', 'Profile', 'user']
   ],
   Teacher: [
     ['assignments', 'Assignments', 'list'],
     ['notifications', 'Notifications', 'bell'],
+    ['classes', 'Classes', 'book'],
     ['profile', 'Profile', 'user']
   ],
   Admin: [
@@ -239,32 +214,27 @@ const loginView = () => `
     <div class="login-card">
       <div class="login-brand">${logo()}</div>
 
-      ${field('email', 'Email', {
-        type: 'email',
-        placeholder: 'you@school.edu'
-      })}
-
-      ${field('password', 'Password', {
-        type: 'password',
-        placeholder: '••••••••',
-        max: 255
-      })}
-
-      <label class="remember">
-        <input id="remember" type="checkbox"> Remember me
-      </label>
-
-      <button class="btn primary block" data-action="login">Log in</button>
+      <p class="demo-title">Students and professors: sign in with your @${esc(config.domain)} Google account.</p>
+      <div id="googleBtn" class="google-btn">${config.googleClientId ? '' : '<p class="modal-hint">Google sign-in is not set up yet.</p>'}</div>
 
       <hr>
 
-      <p class="demo-title">Try a demo account</p>
+      <details class="admin-login">
+        <summary>Admin login</summary>
 
-      <div class="demo-row">
-        <button class="btn" data-action="demo" data-id="student">Student demo</button>
-        <button class="btn" data-action="demo" data-id="teacher">Teacher demo</button>
-        <button class="btn" data-action="demo" data-id="admin">Admin demo</button>
-      </div>
+        ${field('email', 'Email', { type: 'email', placeholder: 'admin@school.edu' })}
+        ${field('password', 'Password', { type: 'password', placeholder: '••••••••', max: 255 })}
+
+        <label class="remember">
+          <input id="showPw" type="checkbox"> Show password
+        </label>
+
+        <label class="remember">
+          <input id="remember" type="checkbox"> Remember me
+        </label>
+
+        <button class="btn primary block" data-action="login">Log in</button>
+      </details>
     </div>
   </div>`;
 
@@ -275,7 +245,7 @@ const shell = content => `
 
       <nav class="side-nav">
         ${NAV[state.user.role].map(([key, label, ic]) => `
-          <button class="nav ${state.view === key || (state.view === 'detail' && key === 'assignments') ? 'active' : ''}"
+          <button class="nav ${state.view === key || (state.view === 'detail' && key === 'assignments') || (state.view === 'classDetail' && key === 'classes') ? 'active' : ''}"
             data-action="nav" data-id="${key}">
             ${icon(ic)}
             <span>${label}</span>
@@ -379,7 +349,7 @@ const detailView = () => {
       <div class="facts">
         <div>
           <div class="label">Teacher</div>
-          <div class="value">${esc(displayName(user(a.teacherId)))}</div>
+          <div class="value">${esc(user(a.teacherId) ? displayName(user(a.teacherId)) : '—')}</div>
         </div>
         <div>
           <div class="label">Due date</div>
@@ -413,7 +383,9 @@ const NOTE_ICONS = {
   REMINDER: 'clock',
   UPDATE: 'pencil',
   NEW: 'plus',
-  DONE: 'check'
+  DONE: 'check',
+  CLASS: 'book',
+  MATERIAL: 'file'
 };
 
 const notificationsView = () => {
@@ -449,26 +421,216 @@ const notificationsView = () => {
     </section>`;
 };
 
-const classesView = () => `
+const genCode = () => {
+  let code;
+  do {
+    code = Array.from({ length: 6 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random() * 32)]).join('');
+  } while (db.classes.some(c => c.joinCode === code));
+  return code;
+};
+
+const studentsOf = c => db.enrollments.filter(e => e[1] == c.id).map(e => user(e[0])).filter(Boolean);
+
+const teacherClassesView = () => `
+  <header class="page-head">
+    <div>
+      <h1>My classes</h1>
+      <p class="sub">Create a class, upload your class list, and share the join code.</p>
+    </div>
+    <button class="btn primary end" data-action="openNewClass">${icon('plus', 18)} New class</button>
+  </header>
+
+  ${myClasses().map(c => `
+    <div class="class-card">
+      <div class="info">
+        <b>${esc(c.name)}${c.group ? ` · Group ${esc(c.group)}` : ''}</b>
+        <span>Join code: <b class="join">${esc(c.joinCode || c.code)}</b> · ${studentsOf(c).length} students</span>
+        <small>${esc(c.schedule)}</small>
+      </div>
+      <button class="btn" data-action="openRoster" data-id="${c.id}">Upload class list</button>
+      <button class="btn" data-action="openClassDetail" data-id="${c.id}">View</button>
+    </div>`).join('') || '<p class="empty">No classes yet. Click New class to create one.</p>'}`;
+
+const safeLink = url => (/^https?:\/\//i.test(url) ? url : '');
+
+const classDetailView = () => {
+  const c = klass(state.selectedClass);
+  const teacher = state.user.role === 'Teacher';
+  const items = db.materials
+    .filter(m => m.classId == c.id)
+    .sort((x, y) => y.posted.localeCompare(x.posted));
+
+  return `
+    <button class="back" data-action="nav" data-id="classes">${icon('back', 18)} Back to classes</button>
+
+    <header class="page-head">
+      <div>
+        <h1>${esc(c.name)}${c.group ? ` · Group ${esc(c.group)}` : ''}</h1>
+        <p class="sub">${esc(c.schedule)}${teacher ? ` · Join code: <b class="join">${esc(c.joinCode || c.code)}</b> · ${studentsOf(c).length} students` : ''}</p>
+      </div>
+      ${teacher ? `<div class="end">
+        <button class="btn" data-action="openRoster" data-id="${c.id}">Upload class list</button>
+        <button class="btn primary" data-action="openMaterial">${icon('plus', 18)} Add material</button>
+      </div>` : ''}
+    </header>
+
+    <div class="group-label">Study materials</div>
+    <section class="panel">
+      ${items.length ? items.map(m => `
+        <div class="material">
+          <span class="tile">${icon('file')}</span>
+          <div class="info">
+            <b>${esc(m.title)}</b>
+            ${m.note ? `<span>${esc(m.note)}</span>` : ''}
+            <small>Posted ${formatDate(m.posted)}</small>
+            <div class="links">
+              ${m.hasFile ? `<a class="chip" href="/api/materials/${m.id}/file" download="${esc(m.fileName)}">${icon('file', 16)}${esc(m.fileName)}</a>` : ''}
+              ${safeLink(m.link) ? `<a class="chip" href="${esc(m.link)}" target="_blank" rel="noopener">${icon('link', 16)}Open link</a>` : ''}
+            </div>
+          </div>
+          ${teacher ? `<button class="btn danger" data-action="deleteMaterial" data-id="${m.id}">Delete</button>` : ''}
+        </div>`).join('') : `<p class="empty">${teacher ? 'No materials yet. Click Add material to upload one.' : 'Your professor hasn’t posted any materials yet.'}</p>`}
+    </section>`;
+};
+
+const classesView = () => state.user.role === 'Teacher' ? teacherClassesView() : `
   <header class="page-head">
     <div>
       <h1>My classes</h1>
       <p class="sub">Classes you’re enrolled in this term.</p>
     </div>
-    <button class="btn ghost end" data-action="openAddClass">${icon('plus', 18)} Add class</button>
+    <div class="end">
+      <button class="btn ghost" data-action="openLoad">${icon('file', 18)} Upload study load</button>
+      <button class="btn ghost" data-action="openAddClass">${icon('plus', 18)} Add class</button>
+    </div>
   </header>
 
   ${myClasses().map(c => `
     <div class="class-card">
       <div class="info">
         <b>${esc(c.name)}</b>
-        <span>${esc(displayName(user(c.teacherId)))}</span>
+        <span>${esc(user(c.teacherId) ? displayName(user(c.teacherId)) : c.faculty)}</span>
         <small>${esc(c.schedule)}</small>
       </div>
-      <button class="btn" data-action="openAttendance" data-id="${c.id}">
-        ${signedToday(c) ? 'Signed' : 'Sign attendance'}
-      </button>
+      <button class="btn" data-action="openClassDetail" data-id="${c.id}">Materials (${db.materials.filter(m => m.classId == c.id).length})</button>
     </div>`).join('')}`;
+
+const ATT = { Present: 'present', Absent: 'absent', Excused: 'excused', 'No Class': 'noclass' };
+
+const attPill = status => `<span class="att ${ATT[status]}">${esc(status)}</span>`;
+
+const rateOf = records => {
+  const present = records.filter(a => a.status === 'Present').length;
+  const counted = present + records.filter(a => a.status === 'Absent').length;
+  return counted ? Math.round(present / counted * 100) : null;
+};
+
+const rateLevel = r => (r === null ? '' : r >= 90 ? 'good' : r >= 80 ? 'warn' : 'bad');
+
+const countsOf = records => Object.keys(ATT)
+  .map(k => `<span>${attPill(k)} ${records.filter(a => a.status === k).length}</span>`)
+  .join('');
+
+const calendarHtml = mine => {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth() + (state.calMonth || 0), 1);
+  const total = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+  const cells = [];
+
+  for (let i = 0; i < first.getDay(); i++) cells.push('<span></span>');
+
+  for (let d = 1; d <= total; d++) {
+    const date = localDate(new Date(first.getFullYear(), first.getMonth(), d));
+    const recs = mine.filter(a => a.date === date);
+    const tip = recs.map(a => `${klass(a.classId).name}: ${a.status}`).join('\n');
+    cells.push(`
+      <span class="cal-day ${date === day(0) ? 'today' : ''}" title="${esc(tip)}">
+        <b>${d}</b>
+        <i>${recs.map(a => `<em class="${ATT[a.status]}"></em>`).join('')}</i>
+      </span>`);
+  }
+
+  return `
+    <div class="cal-head">
+      <button class="btn ghost" data-action="calMonth" data-id="-1">${icon('back', 16)}</button>
+      <b>${first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</b>
+      <button class="btn ghost flip" data-action="calMonth" data-id="1">${icon('back', 16)}</button>
+    </div>
+    <div class="cal">
+      ${['Su', 'M', 'T', 'W', 'Th', 'F', 'Sa'].map(w => `<small>${w}</small>`).join('')}
+      ${cells.join('')}
+    </div>
+    <p class="cal-legend">${Object.keys(ATT).map(k => `<span><em class="${ATT[k]}"></em>${k}</span>`).join('')}</p>`;
+};
+
+const attendanceView = () => {
+  const today = myClasses().filter(c => !c.days || c.days.includes(new Date().getDay()));
+  const history = db.attendance
+    .filter(a => a.studentId == state.user.id)
+    .sort((x, y) => y.date.localeCompare(x.date));
+  const rate = rateOf(history);
+
+  return `
+    <header class="page-head">
+      <div>
+        <h1>Attendance</h1>
+        <p class="sub">Sign in once your class starts. You can sign until 11:59 PM that day.</p>
+      </div>
+    </header>
+
+    <section class="panel tracker">
+      <div class="rate ${rateLevel(rate)}">
+        <b>${rate === null ? '—' : rate + '%'}</b>
+        <span>Attendance rate</span>
+        <small>Present ÷ (Present + Absent). Excused and No Class don't count against you.</small>
+      </div>
+      <div class="counts">${countsOf(history)}</div>
+    </section>
+
+    <div class="group-label">Today</div>
+    ${today.length ? today.map(c => `
+      <div class="class-card">
+        <div class="info">
+          <b>${esc(c.name)}</b>
+          <span>${esc(user(c.teacherId) ? displayName(user(c.teacherId)) : c.faculty)}</span>
+          <small>${esc(c.schedule)}</small>
+          ${c.isDemo ? `
+            <div class="demo-row demo-class">
+              <button class="btn" data-action="demoClass" data-id="now">Start now</button>
+              <button class="btn" data-action="demoClass" data-id="soon">Start in 2 min</button>
+              <button class="btn" data-action="demoClass" data-id="day">All day</button>
+            </div>` : ''}
+        </div>
+        <button class="btn" data-action="openAttendance" data-id="${c.id}">
+          ${signedToday(c) ? signedToday(c).status : 'Sign attendance'}
+        </button>
+      </div>`).join('') : '<p class="empty">No classes today.</p>'}
+
+    <div class="group-label">By class</div>
+    <section class="panel">
+      ${myClasses().map(c => {
+        const recs = history.filter(a => a.classId == c.id);
+        const r = rateOf(recs);
+        return `
+          <div class="class-rate">
+            <span class="name">${esc(c.name)}<small>${recs.length} signed</small></span>
+            <span class="bar"><i class="${rateLevel(r)}" style="width:${r || 0}%"></i></span>
+            <b>${r === null ? '—' : r + '%'}</b>
+          </div>`;
+      }).join('') || '<p class="empty">No classes yet.</p>'}
+    </section>
+
+    <div class="group-label">Calendar</div>
+    <section class="panel calendar">${calendarHtml(history)}</section>
+
+    <div class="group-label">History</div>
+    <section class="panel">
+      ${history.length ? `<table class="load-table">
+        <tr><th>Date</th><th>Class</th><th>Status</th></tr>
+        ${history.map(a => `<tr><td>${formatDate(a.date)}</td><td>${esc(klass(a.classId).name)}</td><td>${attPill(a.status)}</td></tr>`).join('')}
+      </table>` : '<p class="empty">No attendance yet.</p>'}
+    </section>`;
+};
 
 const usersView = () => `
   <header class="page-head">
@@ -494,10 +656,7 @@ const usersView = () => `
         ${u.id === state.user.id ? '' : `<button class="btn" data-action="toggleUser" data-id="${u.id}">${u.active ? 'Deactivate' : 'Activate'}</button>`}
       </div>`).join('')}
   </section>
-
-  <p style="margin-top:16px">
-    <button class="btn ghost" data-action="resetData">Reset demo data</button>
-  </p>`;
+`;
 
 const profileView = () => `
   <header class="page-head">
@@ -523,6 +682,8 @@ const PAGES = {
   detail: detailView,
   notifications: notificationsView,
   classes: classesView,
+  classDetail: classDetailView,
+  attendance: attendanceView,
   users: usersView,
   profile: profileView
 };
@@ -571,16 +732,105 @@ const attendanceModal = () => {
   return modal(
     'Sign attendance',
     `<p class="modal-text">Sign attendance for <b>${esc(shortCode(c))}</b>?</p>
+     ${c.days ? `<p class="modal-hint">Class time: ${esc(classTime(c))}. You can sign from the start of class until 11:59 PM today.</p>` : ''}
      <div class="status-box">
        <span>Status</span>
        <span>${signed ? signed.status : 'Not signed'}</span>
      </div>
-     ${signed ? '' : field('attendanceCode', 'Attendance code', { placeholder: 'e.g. ABC123', max: 50 }) + `<p class="modal-hint">Demo code: ${esc(c.attendanceCode)}</p>`}`,
+     ${signed ? '' : `<label class="field">
+       <span>Attendance</span>
+       <select id="attStatus">
+         <option>Present</option>
+         <option>Absent</option>
+         <option>Excused</option>
+         <option>No Class</option>
+       </select>
+     </label>`}
+     ${signed || !c.hasCode ? '' : field('attendanceCode', 'Attendance code', { placeholder: 'e.g. ABC123', max: 50 })}`,
     signed
       ? '<button class="btn primary" data-action="close">OK</button>'
       : CANCEL + '<button class="btn primary" data-action="saveAttendance">Sign attendance</button>'
   );
 };
+
+const studyLoadModal = () => modal(
+  'Upload study load',
+  state.loadRows
+    ? `<table class="load-table">
+         <tr><th>Course</th><th>Schedule</th><th>Room</th><th>Faculty</th></tr>
+         ${state.loadRows.map(r => `<tr><td>${esc(r.code)}</td><td>${esc(r.dayText)} ${fmtMin(r.start)} – ${fmtMin(r.end)}</td><td>${esc(r.room)}</td><td>${esc(r.faculty)}</td></tr>`).join('')}
+       </table>
+       <p class="modal-hint">Check your subjects before saving. Missing one? Cancel and paste the text instead.</p>`
+    : `<label class="field">
+         <span>Study load</span>
+         <textarea id="studyLoad" placeholder="Paste your study load here"></textarea>
+       </label>
+       <p class="modal-hint">Open your study load on the school portal, select the whole table, copy it and paste it here.</p>
+       <label class="field">
+         <span>Or upload a screenshot</span>
+         <input id="loadImage" type="file" accept="image/*">
+       </label>`,
+  CANCEL + (state.loadRows
+    ? '<button class="btn primary" data-action="saveLoad">Save classes</button>'
+    : '<button class="btn primary" data-action="previewLoad">Preview</button>')
+);
+
+const newClassModal = () => modal(
+  'New class',
+  `${field('newCode', 'Course code', { placeholder: 'e.g. IT 3105N', max: 30 })}
+   ${field('newGroup', 'Group #', { placeholder: 'e.g. 3', max: 5 })}
+   ${field('newTitle', 'Course title (optional)', { placeholder: 'e.g. App Dev and Emerging Tech' })}
+   ${field('newDays', 'Days', { placeholder: 'e.g. M W or T Th or Sat', max: 30 })}
+   ${field('newStart', 'Start time', { type: 'time' })}
+   ${field('newEnd', 'End time', { type: 'time' })}
+   ${field('newRoom', 'Room', { placeholder: 'e.g. LB445TC', max: 30 })}`,
+  CANCEL + '<button class="btn primary" data-action="saveNewClass">Create class</button>'
+);
+
+const rosterModal = () => {
+  const c = klass(state.selectedClass);
+  const r = state.rosterResult;
+
+  if (r) {
+    return modal(
+      'Class list uploaded',
+      `<p class="modal-text"><b>${r.added}</b> added · <b>${r.already}</b> already in class · <b>${r.missing.length}</b> without accounts</p>
+       ${r.missing.length ? `<p class="modal-hint">These students don't have accounts yet. Once they make one, they can join using the code <b class="join">${esc(c.joinCode || c.code)}</b>:</p>
+       <div class="missing">${r.missing.map(m => `<div>${esc(m)}</div>`).join('')}</div>` : ''}`,
+      '<button class="btn primary" data-action="close">Done</button>'
+    );
+  }
+
+  return modal(
+    `Upload class list · ${esc(c.name)}`,
+    `<label class="field">
+       <span>CSV file</span>
+       <input id="rosterFile" type="file" accept=".csv,.txt">
+     </label>
+     <label class="field">
+       <span>Or paste the list</span>
+       <textarea id="rosterText" placeholder="Name,Email&#10;Juan Dela Cruz,22100001@usc.edu.ph"></textarea>
+     </label>
+     <p class="modal-hint">Any format works as long as each student has an email. Students with accounts are added right away.</p>`,
+    CANCEL + '<button class="btn primary" data-action="saveRoster">Add students</button>'
+  );
+};
+
+const materialModal = () => modal(
+  'Add study material',
+  `${field('matTitle', 'Title', { placeholder: 'e.g. Chapter 3 slides' })}
+   <label class="field">
+     <span>Note (optional)</span>
+     <textarea id="matNote" maxlength="500" placeholder="What should students do with this?"></textarea>
+   </label>
+   <label class="field">
+     <span>File (optional, up to 5 MB)</span>
+     <input id="matFile" type="file">
+   </label>
+   ${field('matLink', 'Link (optional)', { placeholder: 'https://…', max: 500 })}
+   <p class="modal-hint">Add a file, a link, or both.</p>`,
+  CANCEL + '<button class="btn primary" data-action="saveMaterial">Post material</button>'
+);
 
 const modalHtml = () => {
   switch (state.modal) {
@@ -600,8 +850,8 @@ const modalHtml = () => {
     case 'addClass':
       return modal(
         'Add class',
-        `${field('classCode', 'Class code', { placeholder: 'e.g. CIS2203N', max: 50 })}
-         <p class="modal-hint">Ask your teacher for the class code. Demo code: BSIT2A</p>`,
+        `${field('classCode', 'Join code', { placeholder: 'e.g. K7P2QX', max: 50 })}
+         <p class="modal-hint">Ask your professor for the class join code.</p>`,
         CANCEL + '<button class="btn primary" data-action="saveClass">Add</button>'
       );
 
@@ -617,12 +867,25 @@ const modalHtml = () => {
              <option>Admin</option>
            </select>
          </label>
-         <p class="modal-hint">Default password: 123456</p>`,
+         ${field('newPassword', 'Password (Admin accounts only)', { type: 'password', max: 255 })}
+         <p class="modal-hint">Students and professors sign in with Google, so they don't need a password. Add professors here before they sign in; anyone else with a school account becomes a Student.</p>`,
         CANCEL + '<button class="btn primary" data-action="saveUser">Save</button>'
       );
 
     case 'attendance':
       return attendanceModal();
+
+    case 'studyLoad':
+      return studyLoadModal();
+
+    case 'newClass':
+      return newClassModal();
+
+    case 'roster':
+      return rosterModal();
+
+    case 'material':
+      return materialModal();
 
     default:
       return '';
@@ -630,8 +893,62 @@ const modalHtml = () => {
 };
 
 const render = () => {
-  document.getElementById('app').innerHTML =
-    state.user ? shell(PAGES[state.view]()) + modalHtml() : loginView();
+  document.getElementById('app').innerHTML = state.user ? shell(PAGES[state.view]()) + modalHtml() : loginView();
+
+  if (!state.user) {
+    showGoogleButton();
+  }
+};
+
+const loadScript = src => new Promise((ok, fail) => {
+  const s = document.createElement('script');
+  s.src = src;
+  s.onload = ok;
+  s.onerror = fail;
+  document.head.append(s);
+});
+
+const showGoogleButton = async () => {
+  const box = document.getElementById('googleBtn');
+  if (!box || !config.googleClientId) return;
+
+  try {
+    if (!window.google?.accounts) {
+      await loadScript('https://accounts.google.com/gsi/client');
+      google.accounts.id.initialize({
+        client_id: config.googleClientId,
+        hd: config.domain,
+        callback: r => run('google', r.credential)
+      });
+    }
+
+    google.accounts.id.renderButton(box, { theme: 'outline', size: 'large', width: 320, text: 'signin_with' });
+  } catch {
+    box.innerHTML = '<p class="modal-hint">Could not load Google sign-in. Check your connection and refresh.</p>';
+  }
+};
+
+
+const readImage = async file => {
+  if (!window.Tesseract) {
+    await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+  }
+
+  const img = await createImageBitmap(file);
+  const scale = Math.min(3, Math.max(1, 3000 / img.width));
+  const canvas = document.createElement('canvas');
+  canvas.width = img.width * scale;
+  canvas.height = img.height * scale;
+
+  const ctx = canvas.getContext('2d');
+  ctx.filter = 'grayscale(1)';
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  const worker = await Tesseract.createWorker('eng');
+  await worker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK });
+  const { data } = await worker.recognize(canvas);
+  await worker.terminate();
+  return data.text;
 };
 
 let toastTimer;
@@ -644,10 +961,50 @@ const toast = (message, bad = false) => {
   toastTimer = setTimeout(() => (el.className = ''), 2600);
 };
 
-const enter = u => {
-  state.user = u;
-  state.view = u.role === 'Admin' ? 'users' : 'assignments';
+const refresh = async () => {
+  try {
+    const data = await api('GET', '/state');
+    const first = !state.user || state.user.id !== data.user.id;
+
+    db = data.db;
+    state.user = data.user;
+
+    if (first) {
+      state.view = data.user.role === 'Admin' ? 'users' : 'assignments';
+      state.seen = new Set(db.notifications.map(n => n.id));
+    }
+
+    announce();
+  } catch {
+    state.user = null;
+  }
 };
+
+const announce = () => {
+  const fresh = db.notifications.filter(n => !state.seen.has(n.id));
+  fresh.forEach(n => state.seen.add(n.id));
+
+  const cls = fresh.find(n => n.type === 'CLASS');
+  if (!cls) return;
+
+  toast(cls.title);
+
+  try {
+    if (window.Notification && Notification.permission === 'granted') new Notification(cls.title, { body: cls.message });
+  } catch {}
+};
+
+const busy = () => {
+  const el = document.activeElement;
+  return state.modal || (el && ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName));
+};
+
+setInterval(async () => {
+  if (!state.user || busy()) return;
+  await refresh();
+  render();
+}, 30000);
+
 
 const readAssignmentForm = () => {
   const form = {
@@ -663,41 +1020,20 @@ const readAssignmentForm = () => {
 };
 
 const actions = {
-  login() {
+  async login() {
     const email = value('email').trim().toLowerCase();
     const password = value('password');
 
     required(email, password);
-
-    const found = db.users.find(
-      u => u.email === email && u.password === password && u.active
-    );
-
-    if (!found) {
-      throw new Invalid('Invalid email or password.');
-    }
-
-    enter(found);
-
-    try {
-      (document.getElementById('remember').checked ? localStorage : sessionStorage)
-        .setItem(SESSION, found.id);
-    } catch {}
+    await api('POST', '/login', { email, password, remember: document.getElementById('remember').checked });
   },
 
-  // Demo buttons only fill the email and password fields.
-  // They do not log in automatically.
-  demo(role) {
-    document.getElementById('email').value = `${role}@acadtrack.edu`;
-    document.getElementById('password').value = '123456';
+  async google(credential) {
+    await api('POST', '/auth/google', { credential });
   },
 
-  logout() {
-    try {
-      localStorage.removeItem(SESSION);
-      sessionStorage.removeItem(SESSION);
-    } catch {}
-
+  async logout() {
+    await api('POST', '/logout', {});
     state.user = null;
     state.modal = null;
   },
@@ -714,6 +1050,8 @@ const actions = {
 
   close() {
     state.modal = null;
+    state.loadRows = null;
+    state.rosterResult = null;
   },
 
   openPost() {
@@ -728,116 +1066,80 @@ const actions = {
     state.modal = 'delete';
   },
 
-  savePost() {
-    const form = readAssignmentForm();
-
-    const a = {
-      id: nextId(),
-      ...form,
-      posted: day(0),
-      teacherId: state.user.id,
-      deleted: 0
-    };
-
-    db.assignments.push(a);
-
-    db.enrollments
-      .filter(e => e[1] === form.classId)
-      .forEach(([studentId]) => {
-        db.submissions.push({
-          id: nextId(),
-          assignmentId: a.id,
-          studentId,
-          status: 'PENDING'
-        });
-
-        notify(
-          studentId,
-          a.id,
-          `New assignment posted: ${a.title}.`,
-          klass(form.classId).name,
-          'NEW'
-        );
-      });
-
+  async savePost() {
+    await api('POST', '/assignments', readAssignmentForm());
     state.modal = null;
     toast('Assignment posted');
   },
 
-  saveEdit() {
-    const a = assignment(state.selected);
-    Object.assign(a, readAssignmentForm());
-
-    db.submissions
-      .filter(s => s.assignmentId == a.id)
-      .forEach(s => notify(
-        s.studentId,
-        a.id,
-        `Your teacher updated ${a.title}.`,
-        klass(a.classId).name,
-        'UPDATE'
-      ));
-
+  async saveEdit() {
+    await api('PUT', `/assignments/${state.selected}`, readAssignmentForm());
     state.modal = null;
     toast('Assignment updated');
   },
 
-  confirmDelete() {
-    assignment(state.selected).deleted = 1;
+  async confirmDelete() {
+    await api('DELETE', `/assignments/${state.selected}`, {});
     state.modal = null;
     state.view = 'assignments';
     toast('Assignment deleted');
   },
 
-  markDone(id) {
-    const submission = db.submissions.find(s => s.id == id);
-
-    if (!submission || submission.studentId != state.user.id) {
-      return;
-    }
-
-    submission.status = 'COMPLETED';
-
-    const a = assignment(submission.assignmentId);
-
-    notify(
-      state.user.id,
-      a.id,
-      'Assignment marked as completed.',
-      a.title,
-      'DONE'
-    );
-
+  async markDone(id) {
+    await api('POST', `/submissions/${id}/complete`, {});
     toast('Marked as completed');
   },
 
-  readNotification(id) {
-    const notification = db.notifications.find(n => n.id == id);
-    if (notification) notification.read = 1;
+  async readNotification(id) {
+    await api('POST', `/notifications/${id}/read`, {});
   },
 
   openAddClass() {
     state.modal = 'addClass';
   },
 
-  saveClass() {
-    const code = value('classCode').replace(/\s+/g, '').toUpperCase();
-
+  async saveClass() {
+    const code = value('classCode').trim();
     required(code);
-
-    const c = db.classes.find(c => c.code === code);
-
-    if (!c) {
-      throw new Invalid('Class code not found.');
-    }
-
-    if (db.enrollments.some(e => e[0] == state.user.id && e[1] == c.id)) {
-      throw new Invalid('You are already enrolled in this class.');
-    }
-
-    db.enrollments.push([state.user.id, c.id]);
+    await api('POST', '/classes/join', { code });
     state.modal = null;
     toast('Class added');
+  },
+
+  openLoad() {
+    state.modal = 'studyLoad';
+    state.loadRows = null;
+  },
+
+  previewLoad() {
+    const rows = parseStudyLoad(value('studyLoad'));
+
+    if (!rows.length) {
+      throw new Invalid('No subjects found. Copy the whole study load table and paste it again.');
+    }
+
+    state.loadRows = rows;
+  },
+
+  async saveLoad() {
+    await api('POST', '/study-load', { rows: state.loadRows });
+
+    try {
+      if (window.Notification && Notification.permission === 'default') Notification.requestPermission();
+    } catch {}
+
+    toast(`${state.loadRows.length} classes added from your study load`);
+    state.modal = null;
+    state.loadRows = null;
+  },
+
+  calMonth(step) {
+    state.calMonth = (state.calMonth || 0) + +step;
+  },
+
+  async demoClass(mode) {
+    const t = await api('POST', '/demo-class', { mode });
+    toast(`Demo class set: ${fmtMin(t.start)} – ${fmtMin(t.end)}`);
   },
 
   openAttendance(id) {
@@ -845,116 +1147,142 @@ const actions = {
     state.modal = 'attendance';
   },
 
-  saveAttendance() {
-    const code = value('attendanceCode').trim();
+  async saveAttendance() {
+    const codeBox = document.getElementById('attendanceCode');
 
-    required(code);
-
-    const c = klass(state.selectedClass);
-
-    if (code.toUpperCase() !== c.attendanceCode) {
-      throw new Invalid('Invalid attendance code.');
-    }
-
-    db.attendance.push({
-      studentId: state.user.id,
-      classId: c.id,
-      date: day(0),
-      status: 'Present'
+    await api('POST', '/attendance', {
+      classId: state.selectedClass,
+      status: value('attStatus'),
+      code: codeBox ? codeBox.value : ''
     });
 
     state.modal = null;
     toast('Attendance recorded');
   },
 
+  openNewClass() {
+    state.modal = 'newClass';
+  },
+
+  async saveNewClass() {
+    const r = await api('POST', '/classes', {
+      code: value('newCode'),
+      group: value('newGroup'),
+      title: value('newTitle'),
+      days: value('newDays'),
+      start: value('newStart'),
+      end: value('newEnd'),
+      room: value('newRoom')
+    });
+
+    state.modal = null;
+    toast(`Class created. Join code: ${r.joinCode}`);
+  },
+
+  openRoster(id) {
+    state.selectedClass = +id;
+    state.rosterResult = null;
+    state.modal = 'roster';
+  },
+
+  async saveRoster() {
+    state.rosterResult = await api('POST', `/classes/${state.selectedClass}/roster`, { text: value('rosterText') });
+  },
+
+  openClassDetail(id) {
+    state.selectedClass = +id;
+    state.view = 'classDetail';
+  },
+
+  openMaterial() {
+    state.modal = 'material';
+    state.pendingFile = null;
+  },
+
+  async saveMaterial() {
+    const title = value('matTitle').trim();
+    const link = value('matLink').trim();
+    const file = state.pendingFile;
+
+    required(title);
+
+    if (!file && !link) {
+      throw new Invalid('Add a file or a link.');
+    }
+
+    await api('POST', '/materials', {
+      classId: state.selectedClass,
+      title,
+      note: value('matNote').trim(),
+      link,
+      fileName: file ? file.name : '',
+      data: file ? file.data : ''
+    });
+
+    state.modal = null;
+    state.pendingFile = null;
+    toast('Material posted');
+  },
+
+  async deleteMaterial(id) {
+    if (!confirm('Delete this material?')) return;
+    await api('DELETE', `/materials/${id}`, {});
+    toast('Material deleted');
+  },
+
   openAddUser() {
     state.modal = 'addUser';
   },
 
-  saveUser() {
-    const email = value('newEmail').trim().toLowerCase();
-
-    required(value('name'), email);
-
-    if (db.users.some(u => u.email === email)) {
-      throw new Invalid('That email is already in use.');
-    }
-
-    db.users.push({
-      id: nextId(),
+  async saveUser() {
+    await api('POST', '/users', {
       name: value('name').trim(),
-      email,
-      password: '123456',
+      email: value('newEmail').trim(),
       role: value('role'),
-      active: 1
+      password: value('newPassword')
     });
 
     state.modal = null;
     toast('User added');
   },
 
-  toggleUser(id) {
-    const u = user(id);
-    if (u) u.active = u.active ? 0 : 1;
+  async toggleUser(id) {
+    await api('POST', `/users/${id}/toggle`, {});
   },
 
-  runReminders() {
-    let sent = 0;
-
-    db.assignments
-      .filter(a => !a.deleted && a.due >= day(0) && a.due <= day(2))
-      .forEach(a => {
-        db.submissions
-          .filter(s => s.assignmentId == a.id && s.status === 'PENDING')
-          .forEach(s => {
-            const exists = db.notifications.some(
-              n => n.userId == s.studentId &&
-                   n.assignmentId == a.id &&
-                   n.type === 'REMINDER'
-            );
-
-            if (exists) return;
-
-            notify(
-              s.studentId,
-              a.id,
-              `${a.title} is due ${dueIn(a.due)}.`,
-              klass(a.classId).name,
-              'REMINDER'
-            );
-
-            sent++;
-          });
-      });
-
-    toast(`${sent} reminder(s) sent`);
-  },
-
-  resetData() {
-    db = seed();
-    state.modal = null;
-    toast('Demo data reset');
+  async runReminders() {
+    const r = await api('POST', '/reminders/run', {});
+    toast(`${r.sent} reminder(s) sent`);
   }
 };
 
-const run = (name, id) => {
+const LOCAL = ['nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser'];
+
+let running = false;
+
+const run = async (name, id) => {
+  if (running) return;
+  running = true;
+  const wasIn = !!state.user;
+
   try {
-    actions[name](id);
+    await actions[name](id);
+
+    if (!LOCAL.includes(name) || name === 'nav') {
+      await refresh();
+    }
   } catch (e) {
+    running = false;
+
     if (e instanceof Invalid) {
+      if (wasIn && !state.user) render();
       return toast(e.message, true);
     }
 
     throw e;
   }
 
-  // IMPORTANT: Do not re-render after a demo click.
-  // Re-rendering would clear the email and password fields.
-  if (name === 'demo') {
-    return;
-  }
-
-  save();
+  running = false;
   render();
 };
 
@@ -977,7 +1305,60 @@ document.addEventListener('input', e => {
   }
 });
 
+
 document.addEventListener('change', e => {
+  if (e.target.id === 'matFile') {
+    const file = e.target.files[0];
+    state.pendingFile = null;
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      e.target.value = '';
+      return toast('File is too big. Use a file up to 5 MB or add a link instead.', true);
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => (state.pendingFile = { name: file.name, data: reader.result });
+    reader.readAsDataURL(file);
+    return;
+  }
+
+  if (e.target.id === 'rosterFile') {
+    const file = e.target.files[0];
+    if (file) file.text().then(text => (document.getElementById('rosterText').value = text));
+    return;
+  }
+
+  if (e.target.id === 'loadImage') {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    toast('Reading screenshot...');
+
+    readImage(file)
+      .then(text => {
+        const rows = parseStudyLoad(text);
+
+        if (!rows.length) {
+          document.getElementById('studyLoad').value = text;
+          return toast('No subjects found. Fix the text below or paste it instead.', true);
+        }
+
+        state.loadRows = rows;
+        render();
+      })
+      .catch(() => toast('Could not read the screenshot. Paste the text instead.', true));
+    return;
+  }
+
+  if (e.target.id === 'showPw') {
+    ['password'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.type = e.target.checked ? 'text' : 'password';
+    });
+    return;
+  }
+
   if (e.target.id === 'filter') {
     state.filter = e.target.value;
   } else if (e.target.id === 'order') {
@@ -990,24 +1371,16 @@ document.addEventListener('change', e => {
 });
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !state.user) {
+  if (e.key === 'Enter' && !state.user && document.activeElement && document.activeElement.id === 'password') {
     run('login');
   }
 });
 
-try {
-  const saved = localStorage.getItem(SESSION) || sessionStorage.getItem(SESSION);
-  const found = saved && db.users.find(u => u.id == saved && u.active);
+(async () => {
+  try {
+    config = await api('GET', '/config');
+  } catch {}
 
-  if (found) {
-    enter(found);
-  }
-} catch {}
-
-render();
-function resetDemo() {
-  if (confirm("Reset AcadTrack to its original demo state?")) {
-    localStorage.removeItem("acadtrack_v4");
-    location.reload();
-  }
-}
+  await refresh();
+  render();
+})();

@@ -1,125 +1,72 @@
 # AcadTrack: Academic Assignment and Deadline Management System
 
-AcadTrack is a web-based academic assignment and deadline management system designed to help students organize their schoolwork, monitor upcoming deadlines, and track assignment progress. It also allows teachers to manage assignments and administrators to oversee user accounts.
-
-## Overview
-
-Academic tasks and deadlines are often scattered across messaging applications, learning management systems, online classrooms, and personal notes. This can make it difficult for students to stay organized and may result in missed deadlines or late submissions.
-
-AcadTrack aims to provide a centralized platform where assignment information can be organized and accessed more conveniently.
+AcadTrack is a web-based system for students, professors and administrators to manage assignments, deadlines, class materials and attendance in one place.
 
 ## Features
 
-- **Assignment Management** — View, post, and update assignments.
-- **Task Tracking** — Mark assignments as completed and monitor progress.
-- **Deadline Reminders** — Help users keep track of upcoming deadlines.
-- **Assignment Updates** — Keep users informed about changes to assignment details.
-- **User Management** — Manage student and teacher accounts.
-- **Role-Based Access** — Provide features according to user roles.
-
-## User Roles
-
-| Role | Description |
-|---|---|
-| Student | View assignments, track deadlines, mark tasks as completed, and monitor progress. |
-| Teacher | Post assignments, provide instructions, set deadlines, and update assignment information. |
-| Administrator | Manage user accounts and oversee system information. |
+- **Sign in with Google** using school (`@usc.edu.ph`) accounts; admin uses email + password
+- **Assignments**: professors post, update and delete; students track and mark them completed
+- **Classes**: professors create classes with a join code and upload class lists (CSV); students join with the code or by uploading their study load (text or screenshot)
+- **Attendance**: students sign Present, Absent, Excused or No Class from the start of class until 11:59 PM that day, with a 15-minute reminder before class and an attendance tracker
+- **Study materials**: professors upload files or links per class
+- **Notifications** for new assignments, updates, deadlines, materials and upcoming classes
 
 ## Technology Stack
 
-The project uses web technologies to provide a browser-based application.
-
-- **HTML** — Application structure
-- **CSS** — User interface and styling
-- **JavaScript** — Application functionality and interactions
-- **Local Storage** — Stores prototype data in the browser
-
-*Note: The storage and technology details should be updated if the project is later connected to a backend server or database.*
-
-## Getting Started
-
-### Prerequisites
-
-- A modern web browser
-- [Visual Studio Code](https://code.visualstudio.com/) (recommended)
-- [Node.js](https://nodejs.org/) if running the project through its included Node.js server
-
-### Installation
-
-1. Clone this repository:
-
-   ```bash
-   git clone https://github.com/YOUR-USERNAME/AcadTrack.git
-   ```
-
-2. Open the project folder:
-
-   ```bash
-   cd AcadTrack
-   ```
-
-3. If the project includes a `package.json` with a start script, run:
-
-   ```bash
-   npm start
-   ```
-
-4. Open the local address shown by the server in your browser. If using the project's default server configuration, this may be:
-
-   ```text
-   http://127.0.0.1:3000
-   ```
-
-If you are using a version without a Node.js server, open the project's `index.html` file in your browser instead.
-
-## Demo Accounts
-
-If demo login buttons are enabled in your current version, they can populate the login form with the following sample credentials.
-
-| Role | Email | Password |
-|---|---|---|
-| Student | `student@acadtrack.edu` | `123456` |
-| Teacher | `teacher@acadtrack.edu` | `123456` |
-| Administrator | `admin@acadtrack.edu` | `123456` |
-
-**Important:** These are demonstration credentials only. Do not use them for a production system.
+| Layer | Technology |
+|---|---|
+| Server | Node.js, Express |
+| Database | PostgreSQL (`pg`) |
+| Login | Google Identity Services, `google-auth-library`, `express-session` + `connect-pg-simple`, `bcryptjs` |
+| Frontend | HTML, CSS, JavaScript (`public/`) |
+| Screenshot reading | Tesseract.js (in the browser) |
 
 ## Project Structure
 
-The exact structure may vary depending on the version uploaded to this repository. A typical project layout may look like this:
-
 ```text
-AcadTrack/
-├── public/
-│   ├── index.html
-│   ├── app.js
-│   └── style.css
-├── server.js
-├── package.json
-└── README.md
+acadtrack/
+├── server.js              application entry point
+├── config/setup.js        creates tables, first admin, demo class
+├── db/schema.sql          database tables
+├── routes/api.js          API routes
+├── controllers/           route and business logic
+├── models/                data access layer (all SQL)
+├── middleware/auth.js     login and role checks
+├── utils/                 time, errors, reminders
+├── public/                frontend (index.html, app.js, styles.css)
+├── .env.example           settings template
+└── package.json
 ```
 
-## Current Limitations
+## Running Locally
 
-- The current prototype may store data locally in the browser.
-- Data stored in browser Local Storage is not automatically synchronized across different devices or users.
-- A production deployment would require appropriate backend services, persistent database storage, and security controls.
-- Demo credentials are intended for testing and demonstration purposes.
+1. Install [Node.js](https://nodejs.org/) 18 or newer.
+2. Run `npm install`.
+3. Copy `.env.example` to `.env` and fill in the values (see below).
+4. Run `npm start` and open `http://localhost:3000`.
 
-## Future Improvements
+The tables are created automatically on the first start.
 
-- Integrate a database for persistent storage.
-- Add email or push notifications for upcoming deadlines.
-- Improve mobile responsiveness and accessibility.
-- Add assignment filtering, sorting, and search.
-- Strengthen authentication and role-based permissions.
-- Add reporting and more detailed progress tracking.
+## Settings (`.env`)
 
-## Project Purpose
+| Setting | What it is |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string (e.g. from Neon) |
+| `SESSION_SECRET` | Any long random text; keeps logins secure |
+| `GOOGLE_CLIENT_ID` | OAuth Client ID from Google Cloud |
+| `ALLOWED_DOMAIN` | School email domain allowed to sign in (default `usc.edu.ph`) |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | First admin account, created on first start |
+| `DEMO_MODE` | `true` adds DEMO 101 for testing attendance |
+| `NODE_ENV` | `production` on the live server |
 
-AcadTrack is developed as an academic software project to demonstrate the design and development of an assignment and deadline management system based on user needs and functional requirements.
+## Accounts
+
+- **Admin** logs in with email + password and manages users.
+- **Professors** must be added by the admin (Users → Add user → Teacher) before they sign in with Google.
+- **Students** just sign in with Google; any `@usc.edu.ph` account becomes a Student on first sign-in.
 
 ## Contributors
+
 
 **AcadTrack Development Team**
 

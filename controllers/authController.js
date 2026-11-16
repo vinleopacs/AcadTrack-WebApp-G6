@@ -1,10 +1,7 @@
-const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { OAuth2Client } = require('google-auth-library');
 const users = require('../models/users');
-const codes = require('../models/codes');
-const { send } = require('../utils/mail');
-const { invalid, forbidden, required } = require('../utils/errors');
+const { invalid, forbidden } = require('../utils/errors');
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const DOMAIN = (process.env.ALLOWED_DOMAIN || 'usc.edu.ph').toLowerCase();
@@ -23,7 +20,7 @@ const config = (req, res) => {
   res.json({ googleClientId: CLIENT_ID || '', domain: DOMAIN, demo: process.env.DEMO_MODE === 'true' });
 };
 
-const login = async (req, res) => {
+const adminLogin = async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase();
   const password = String(req.body.password || '');
 
@@ -35,85 +32,6 @@ const login = async (req, res) => {
   if (!ok) throw invalid('Invalid email or password.');
 
   await startSession(req, user, req.body.remember);
-  res.json({ ok: true });
-};
-
-const cleanEmail = req => String(req.body.email || '').trim().toLowerCase();
-
-const checkPassword = password => {
-  if (password.length < 8) throw invalid('Password must be at least 8 characters.');
-  if (password.length > 72) throw invalid('Password is too long.');
-};
-
-const sendCode = async (email, purpose, extra = {}) => {
-  const code = String(crypto.randomInt(1e6)).padStart(6, '0');
-  await codes.save({ email, purpose, codeHash: await bcrypt.hash(code, 10), ...extra });
-  const what = purpose === 'signup' ? 'create your AcadTrack account' : 'reset your AcadTrack password';
-  await send(email, `Your AcadTrack code: ${code}`, `Your code is ${code}. Use it to ${what}. It expires in 10 minutes.\n\nIf you didn't ask for this, you can ignore this email.`);
-};
-
-const signup = async (req, res) => {
-  const name = String(req.body.name || '').trim().slice(0, 150);
-  const email = cleanEmail(req);
-  const password = String(req.body.password || '');
-
-  required(name, email, password);
-  if (!email.endsWith('@' + DOMAIN)) throw invalid(`Use your @${DOMAIN} email.`);
-  checkPassword(password);
-
-  const user = await users.findByEmail(email);
-  if (user && user.passwordHash) throw invalid('An account with this email already exists. Sign in instead.');
-
-  await sendCode(email, 'signup', { name, passwordHash: await bcrypt.hash(password, 10) });
-  res.json({ ok: true });
-};
-
-const forgot = async (req, res) => {
-  const email = cleanEmail(req);
-
-  required(email);
-
-  const user = await users.findByEmail(email);
-  if (user && user.active) await sendCode(email, 'reset');
-
-  res.json({ ok: true });
-};
-
-const verify = async (req, res) => {
-  const email = cleanEmail(req);
-  const purpose = req.body.purpose === 'reset' ? 'reset' : 'signup';
-  const code = String(req.body.code || '').trim();
-  const row = await codes.find(email, purpose);
-
-  required(code);
-
-  if (!row || row.expired || row.attempts >= 5) throw invalid('This code has expired. Send a new one.');
-  if (!(await bcrypt.compare(code, row.codeHash))) {
-    await codes.miss(email, purpose);
-    throw invalid('Wrong code. Check your email and try again.');
-  }
-
-  let user = await users.findByEmail(email);
-  let passwordHash = row.passwordHash;
-
-  if (user && !user.active) throw forbidden('Your account has been deactivated. Please contact the admin.');
-
-  if (purpose === 'reset') {
-    const password = String(req.body.password || '');
-    checkPassword(password);
-    passwordHash = await bcrypt.hash(password, 10);
-  }
-
-  if (!user && purpose === 'signup') {
-    user = await users.create({ name: row.name, email, role: 'Student', passwordHash });
-  } else if (user) {
-    await users.setPassword(user.id, passwordHash);
-  } else {
-    throw invalid('This code has expired. Send a new one.');
-  }
-
-  await codes.remove(email, purpose);
-  await startSession(req, user, true);
   res.json({ ok: true });
 };
 
@@ -156,4 +74,4 @@ const logout = (req, res) => {
   });
 };
 
-module.exports = { config, login, signup, forgot, verify, googleLogin, logout };
+module.exports = { config, adminLogin, googleLogin, logout };

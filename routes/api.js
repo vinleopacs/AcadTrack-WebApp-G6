@@ -21,10 +21,7 @@ const loginLimit = rateLimit({
 router.use(jsonOnly);
 
 router.get('/config', auth.config);
-router.post('/login', loginLimit, wrap(auth.login));
-router.post('/signup', loginLimit, wrap(auth.signup));
-router.post('/forgot', loginLimit, wrap(auth.forgot));
-router.post('/verify', loginLimit, wrap(auth.verify));
+router.post('/login', loginLimit, wrap(auth.adminLogin));
 router.post('/auth/google', loginLimit, wrap(auth.googleLogin));
 router.post('/logout', auth.logout);
 

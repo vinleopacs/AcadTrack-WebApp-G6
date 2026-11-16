@@ -63,7 +63,9 @@ const state = {
   query: '',
   filter: '',
   order: 'soon',
-  seen: null
+  seen: null,
+  auth: 'signin',
+  pending: null
 };
 
 class Invalid extends Error {}
@@ -209,32 +211,60 @@ const NAV = {
   ]
 };
 
+const googleBlock = () => (config.googleClientId ? '<div class="auth-or"><span>or</span></div><div id="googleBtn" class="google-btn"></div>' : '');
+
+const switchLink = (text, label, view) =>
+  `<p class="auth-switch">${text} <button class="link-btn" data-action="authView" data-id="${view}">${label}</button></p>`;
+
+const authBody = () => {
+  const p = state.pending || {};
+
+  if (state.auth === 'signup') return `
+    <h1 class="auth-title">Create your account</h1>
+    <p class="auth-sub">Use your @${esc(config.domain)} email. We'll send a code to verify it.</p>
+    ${field('name', 'Full name', { placeholder: 'Juan Dela Cruz', max: 150 })}
+    ${field('email', 'School email', { type: 'email', placeholder: '22100001@' + config.domain })}
+    ${field('password', 'Password', { type: 'password', placeholder: 'At least 8 characters', max: 72 })}
+    ${field('confirm', 'Confirm password', { type: 'password', placeholder: '••••••••', max: 72 })}
+    <button class="btn primary block" data-action="signup">Create account</button>
+    ${googleBlock()}
+    ${switchLink('Already have an account?', 'Sign in', 'signin')}`;
+
+  if (state.auth === 'forgot') return `
+    <h1 class="auth-title">Forgot password</h1>
+    <p class="auth-sub">Enter your email and we'll send you a code to reset your password.</p>
+    ${field('email', 'Email', { type: 'email', placeholder: '22100001@' + config.domain })}
+    <button class="btn primary block" data-action="forgot">Send code</button>
+    ${switchLink('Remembered it?', 'Sign in', 'signin')}`;
+
+  if (state.auth === 'verify') return `
+    <h1 class="auth-title">Check your email</h1>
+    <p class="auth-sub">We sent a 6-digit code to <strong>${esc(p.email)}</strong>. It expires in 10 minutes.</p>
+    ${field('code', 'Verification code', { placeholder: '000000', max: 6 })}
+    ${p.purpose === 'reset' ? field('password', 'New password', { type: 'password', placeholder: 'At least 8 characters', max: 72 }) + field('confirm', 'Confirm new password', { type: 'password', placeholder: '••••••••', max: 72 }) : ''}
+    <button class="btn primary block" data-action="verify">${p.purpose === 'reset' ? 'Reset password' : 'Verify and continue'}</button>
+    <p class="auth-switch">Didn't get it? <button class="link-btn" data-action="resend">Resend code</button></p>
+    ${switchLink('Wrong email?', 'Go back', p.purpose === 'reset' ? 'forgot' : 'signup')}`;
+
+  return `
+    <h1 class="auth-title">Sign in</h1>
+    <p class="auth-sub">Welcome back. Use your school email.</p>
+    ${field('email', 'Email', { type: 'email', placeholder: '22100001@' + config.domain })}
+    ${field('password', 'Password', { type: 'password', placeholder: '••••••••', max: 72 })}
+    <div class="auth-row">
+      <label class="remember"><input id="remember" type="checkbox"> Remember me</label>
+      <button class="link-btn" data-action="authView" data-id="forgot">Forgot password?</button>
+    </div>
+    <button class="btn primary block" data-action="login">Sign in</button>
+    ${googleBlock()}
+    ${switchLink("Don't have an account?", 'Sign up', 'signup')}`;
+};
+
 const loginView = () => `
   <div class="login">
     <div class="login-card">
       <div class="login-brand">${logo()}</div>
-
-      <p class="demo-title">Students and professors: sign in with your @${esc(config.domain)} Google account.</p>
-      <div id="googleBtn" class="google-btn">${config.googleClientId ? '' : '<p class="modal-hint">Google sign-in is not set up yet.</p>'}</div>
-
-      <hr>
-
-      <details class="admin-login">
-        <summary>Admin login</summary>
-
-        ${field('email', 'Email', { type: 'email', placeholder: 'admin@school.edu' })}
-        ${field('password', 'Password', { type: 'password', placeholder: '••••••••', max: 255 })}
-
-        <label class="remember">
-          <input id="showPw" type="checkbox"> Show password
-        </label>
-
-        <label class="remember">
-          <input id="remember" type="checkbox"> Remember me
-        </label>
-
-        <button class="btn primary block" data-action="login">Log in</button>
-      </details>
+      ${authBody()}
     </div>
   </div>`;
 
@@ -868,7 +898,7 @@ const modalHtml = () => {
            </select>
          </label>
          ${field('newPassword', 'Password (Admin accounts only)', { type: 'password', max: 255 })}
-         <p class="modal-hint">Students and professors sign in with Google, so they don't need a password. Add professors here before they sign in; anyone else with a school account becomes a Student.</p>`,
+         <p class="modal-hint">Students and professors sign up with their school email or Google. Add professors here before they sign up; anyone else with a school account becomes a Student.</p>`,
         CANCEL + '<button class="btn primary" data-action="saveUser">Save</button>'
       );
 
@@ -922,7 +952,7 @@ const showGoogleButton = async () => {
       });
     }
 
-    google.accounts.id.renderButton(box, { theme: 'outline', size: 'large', width: 320, text: 'signin_with' });
+    google.accounts.id.renderButton(box, { theme: 'outline', size: 'large', width: 320, text: state.auth === 'signup' ? 'signup_with' : 'signin_with' });
   } catch {
     box.innerHTML = '<p class="modal-hint">Could not load Google sign-in. Check your connection and refresh.</p>';
   }
@@ -1028,6 +1058,57 @@ const actions = {
     await api('POST', '/login', { email, password, remember: document.getElementById('remember').checked });
   },
 
+  authView(view) {
+    state.auth = view;
+  },
+
+  async signup() {
+    const name = value('name').trim();
+    const email = value('email').trim().toLowerCase();
+    const password = value('password');
+
+    required(name, email, password);
+    if (password !== value('confirm')) throw new Invalid('Passwords do not match.');
+
+    await api('POST', '/signup', { name, email, password });
+    state.pending = { purpose: 'signup', name, email, password };
+    state.auth = 'verify';
+    toast('Code sent to ' + email);
+  },
+
+  async forgot() {
+    const email = value('email').trim().toLowerCase();
+
+    required(email);
+    await api('POST', '/forgot', { email });
+    state.pending = { purpose: 'reset', email };
+    state.auth = 'verify';
+    toast('If that account exists, a code is on its way');
+  },
+
+  async resend() {
+    const p = state.pending;
+    await api('POST', p.purpose === 'reset' ? '/forgot' : '/signup', p);
+    toast('New code sent');
+  },
+
+  async verify() {
+    const p = state.pending;
+    const body = { email: p.email, purpose: p.purpose, code: value('code').trim() };
+
+    required(body.code);
+
+    if (p.purpose === 'reset') {
+      body.password = value('password');
+      required(body.password);
+      if (body.password !== value('confirm')) throw new Invalid('Passwords do not match.');
+    }
+
+    await api('POST', '/verify', body);
+    state.pending = null;
+    state.auth = 'signin';
+  },
+
   async google(credential) {
     await api('POST', '/auth/google', { credential });
   },
@@ -1036,6 +1117,7 @@ const actions = {
     await api('POST', '/logout', {});
     state.user = null;
     state.modal = null;
+    state.auth = 'signin';
   },
 
   nav(view) {
@@ -1256,7 +1338,7 @@ const actions = {
   }
 };
 
-const LOCAL = ['nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser'];
+const LOCAL = ['authView', 'signup', 'forgot', 'resend', 'nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser'];
 
 let running = false;
 
@@ -1351,14 +1433,6 @@ document.addEventListener('change', e => {
     return;
   }
 
-  if (e.target.id === 'showPw') {
-    ['password'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.type = e.target.checked ? 'text' : 'password';
-    });
-    return;
-  }
-
   if (e.target.id === 'filter') {
     state.filter = e.target.value;
   } else if (e.target.id === 'order') {
@@ -1371,8 +1445,8 @@ document.addEventListener('change', e => {
 });
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !state.user && document.activeElement && document.activeElement.id === 'password') {
-    run('login');
+  if (e.key === 'Enter' && !state.user && e.target.closest('.login-card input')) {
+    run({ signin: 'login', signup: 'signup', forgot: 'forgot', verify: 'verify' }[state.auth]);
   }
 });
 

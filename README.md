@@ -4,7 +4,7 @@ AcadTrack is a web app-based system for students, professors and administrators 
 
 ## Features
 
-- **Sign in with Google** using school (`@usc.edu.ph`) accounts; admin uses email + password
+- **Sign up and sign in** with a school (`@usc.edu.ph`) email and password, verified by a 6-digit email code, or with Google; forgot password resets by email code
 - **Assignments**: professors post, update and delete; students track and mark them completed. There is no grading: professors don't score, grade or review student work
 - **Classes**: professors create classes with a join code and upload a class list per class (Markdown, CSV or TXT); students join with the code or by uploading their study load (text or screenshot)
 - **Attendance**: students sign Present, Absent, Excused or No Class from the start of class until 11:59 PM that day, with a 15-minute reminder before class and an attendance tracker
@@ -60,15 +60,17 @@ The tables are created automatically on the first start.
 | `SESSION_SECRET` | Any long random text; keeps logins secure |
 | `GOOGLE_CLIENT_ID` | OAuth Client ID from Google Cloud |
 | `ALLOWED_DOMAIN` | School email domain allowed to sign in (default `usc.edu.ph`) |
+| `RESEND_API_KEY` | API key from [Resend](https://resend.com) for sending verification codes; if empty, codes are printed in the server log |
+| `MAIL_FROM` | Sender shown on emails, from a domain verified in Resend |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | First admin account, created on first start |
 | `DEMO_MODE` | `true` adds DEMO 101 for testing attendance |
 | `NODE_ENV` | `production` on the live server |
 
 ## Accounts
 
-- **Admin** logs in with email + password and manages users.
-- **Professors** must be added by the admin (Users → Add user → Teacher) before they sign in with Google.
-- **Students** just sign in with Google; any `@usc.edu.ph` account becomes a Student on first sign-in.
+- **Admin** signs in with email + password and manages users.
+- **Professors** must be added by the admin (Users → Add user → Teacher) before they sign up or sign in with Google.
+- **Students** sign up with their `@usc.edu.ph` email or sign in with Google; any new school account becomes a Student.
 
 ## Contributors
 

@@ -804,8 +804,8 @@ const rosterModal = () => {
   return modal(
     `Upload class list · ${esc(c.name)}`,
     `<label class="field">
-       <span>CSV file</span>
-       <input id="rosterFile" type="file" accept=".csv,.txt">
+       <span>Class list file</span>
+       <input id="rosterFile" type="file" accept=".md,.csv,.txt">
      </label>
      <label class="field">
        <span>Or paste the list</span>

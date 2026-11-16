@@ -6,7 +6,7 @@ AcadTrack is a web app-based system for students, professors and administrators 
 
 - **Sign in with Google** using school (`@usc.edu.ph`) accounts; admin uses email + password
 - **Assignments**: professors post, update and delete; students track and mark them completed. There is no grading: professors don't score, grade or review student work
-- **Classes**: professors create classes with a join code and upload class lists (CSV or TXT); students join with the code or by uploading their study load (text or screenshot)
+- **Classes**: professors create classes with a join code and upload a class list per class (Markdown, CSV or TXT); students join with the code or by uploading their study load (text or screenshot)
 - **Attendance**: students sign Present, Absent, Excused or No Class from the start of class until 11:59 PM that day, with a 15-minute reminder before class and an attendance tracker
 - **Study materials**: professors upload files or links per class
 - **Notifications** for new assignments, updates, deadlines, materials and upcoming classes
@@ -15,7 +15,6 @@ AcadTrack is a web app-based system for students, professors and administrators 
 
 - **Announcements**: professors post announcements to their classes
 - **Email invites**: students on a professor's class list who don't have an AcadTrack account yet get an email with the class and join code; after signing in with Google they accept the class without typing the code
-- **Markdown class lists**: upload class lists as `.md` files
 
 ## Technology Stack
 

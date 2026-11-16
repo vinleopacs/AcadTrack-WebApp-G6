@@ -1,6 +1,6 @@
 # AcadTrack: Academic Assignment and Deadline Management System
 
-AcadTrack is a web-based system for students, professors and administrators to manage assignments, deadlines, class materials and attendance in one place.
+AcadTrack is a web app-based system for students, professors and administrators to manage announcements, deadlines, class materials and attendance in one place.
 
 ## Features
 

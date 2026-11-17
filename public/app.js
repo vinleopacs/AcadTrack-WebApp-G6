@@ -44,6 +44,7 @@ const ICONS = {
   back: '<path d="m15 5-7 7 7 7"/>',
   file: '<path d="M7 3h7l4 4v14H7z"/>',
   logout: '<path d="M10 4H5v16h5"/><path d="m15 8 4 4-4 4M19 12H9"/>',
+  home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>'
 };
 
@@ -279,14 +280,14 @@ const field = (id, label, { value = '', type = 'text', placeholder = '', max = 1
 
 const NAV = {
   Student: [
-    ['assignments', 'Assignments', 'list'],
+    ['home', 'Home', 'home'],
     ['notifications', 'Notifications', 'bell'],
     ['attendance', 'Attendance', 'check'],
     ['classes', 'Classes', 'book'],
     ['profile', 'Profile', 'user']
   ],
   Teacher: [
-    ['assignments', 'Assignments', 'list'],
+    ['home', 'Home', 'home'],
     ['notifications', 'Notifications', 'bell'],
     ['classes', 'Classes', 'book'],
     ['profile', 'Profile', 'user']
@@ -742,6 +743,111 @@ const attendanceView = () => {
     </section>`;
 };
 
+const ring = r => {
+  const len = 2 * Math.PI * 42;
+  return `
+    <svg class="ring ${rateLevel(r)}" viewBox="0 0 100 100" role="img" aria-label="Attendance ${r === null ? 'not started' : r + '%'}">
+      <circle cx="50" cy="50" r="42"/>
+      <circle class="fill" cx="50" cy="50" r="42" stroke-dasharray="${len * (r || 0) / 100} ${len}"/>
+      <text x="50" y="50">${r === null ? '—' : r + '%'}</text>
+    </svg>`;
+};
+
+const statusToday = c => {
+  const signed = signedToday(c);
+  const now = nowMin();
+  if (signed) return attPill(signed.status);
+  if (now >= c.start && now < c.end) return '<span class="att now">Now</span>';
+  if (now < c.start) return `<span class="att later">In ${fmtWait(c.start - now)}</span>`;
+  return '<span class="att later">Not signed</span>';
+};
+
+const firstName = n => (n.includes(',') ? n.split(',')[1] : n).trim().split(' ')[0];
+
+const fmtWait = m => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60 ? (m % 60) + 'm' : ''}`.trim() : `${m}m`);
+
+const homeView = () => {
+  const teacher = state.user.role === 'Teacher';
+  const hour = new Date().getHours();
+  const hello = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const today = (teacher ? myClasses() : scheduleClasses())
+    .filter(c => c.days && c.days.includes(new Date().getDay()))
+    .sort((x, y) => x.start - y.start);
+  const history = db.attendance.filter(a => a.studentId == state.user.id);
+  const rate = rateOf(history);
+  const notes = db.notifications.filter(n => n.userId == state.user.id).sort((x, y) => y.at.localeCompare(x.at)).slice(0, 4);
+  const mats = db.materials.filter(m => myClasses().some(c => c.id == m.classId)).sort((x, y) => y.posted.localeCompare(x.posted)).slice(0, 3);
+  const students = new Set(myClasses().flatMap(c => studentsOf(c).map(u => u.id))).size;
+  const pendingCount = myClasses().reduce((n, c) => n + pendingOf(c).length, 0);
+
+  const stats = teacher
+    ? [['book', myClasses().length, 'Classes'], ['user', students, 'Students'], ['clock', pendingCount, 'Pending'], ['file', db.materials.filter(m => myClasses().some(c => c.id == m.classId)).length, 'Materials']]
+    : [['book', myClasses().length, 'Classes'], ['clock', today.length, 'Today'], ['bell', unreadCount(), 'Unread']];
+
+  return `
+    <section class="hero">
+      <div>
+        <small>${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</small>
+        <h1>${hello}, ${esc(firstName(state.user.name))}</h1>
+        <p>${today.length ? `You have ${today.length} class${today.length === 1 ? '' : 'es'} today${today[0] ? `, starting ${fmtMin(today[0].start)}` : ''}.` : 'No classes today. Enjoy the break.'}</p>
+      </div>
+      ${teacher ? '' : ring(rate)}
+    </section>
+
+    <section class="stats cols-${stats.length}">
+      ${stats.map(([ic, n, label]) => `<div class="stat"><span class="tile">${icon(ic, 20)}</span><b>${n}</b><span>${label}</span></div>`).join('')}
+    </section>
+
+    <div class="home-grid">
+      <div>
+        <div class="group-label">Today's schedule</div>
+        <section class="panel timeline">
+          ${today.length ? today.map(c => `
+            <div class="slot">
+              <span class="time">${fmtMin(c.start)}<small>${fmtMin(c.end)}</small></span>
+              <span class="info"><b>${esc(c.name)}</b><small>${esc(c.room || 'No room')}${teacher ? ` · ${studentsOf(c).length} students` : ''}</small></span>
+              ${teacher ? `<button class="btn soft" data-action="openClassDetail" data-id="${c.id}">Open</button>` : `<button class="slot-status" data-action="openAttendance" data-id="${c.id}">${statusToday(c)}</button>`}
+            </div>`).join('') : `<p class="empty">${teacher ? 'No classes today.' : scheduleClasses().length ? 'No classes today.' : 'Upload your study load on Attendance to see your schedule here.'}</p>`}
+        </section>
+
+        ${teacher ? '' : `
+          <div class="group-label">Attendance by class</div>
+          <section class="panel">
+            ${scheduleClasses().map(c => {
+              const r = rateOf(history.filter(a => a.classId == c.id));
+              return `
+                <div class="class-rate">
+                  <span class="name">${esc(c.name)}</span>
+                  <span class="bar"><i class="${rateLevel(r)}" style="width:${r || 0}%"></i></span>
+                  <b class="${rateLevel(r)}">${r === null ? '—' : r + '%'}</b>
+                </div>`;
+            }).join('') || '<p class="empty">No schedule yet.</p>'}
+          </section>`}
+      </div>
+
+      <div>
+        <div class="group-label">Latest notifications <button class="link-btn" data-action="nav" data-id="notifications">See all</button></div>
+        <section class="panel">
+          ${notes.length ? notes.map(n => `
+            <button class="note ${n.read ? '' : 'unread'}" data-action="readNotification" data-id="${n.id}">
+              <span class="tile">${icon(NOTE_ICONS[n.type] || 'bell')}</span>
+              <span class="note-text"><b>${esc(n.title)}</b><small>${formatStamp(n.at)}</small></span>
+              ${n.read ? '' : '<i class="dot"></i>'}
+            </button>`).join('') : '<p class="empty">You’re all caught up.</p>'}
+        </section>
+
+        <div class="group-label">${teacher ? 'Recently posted' : 'New materials'}</div>
+        <section class="panel">
+          ${mats.length ? mats.map(m => `
+            <button class="note" data-action="openClassDetail" data-id="${m.classId}">
+              <span class="tile">${icon('file')}</span>
+              <span class="note-text"><b>${esc(m.title)}</b><small>${esc(klass(m.classId).name)} · ${formatDate(m.posted)}</small></span>
+            </button>`).join('') : '<p class="empty">No materials yet.</p>'}
+        </section>
+      </div>
+    </div>`;
+};
+
 const usersView = () => `
   <header class="page-head">
     <div>
@@ -789,6 +895,7 @@ const profileView = () => `
   </section>`;
 
 const PAGES = {
+  home: homeView,
   assignments: assignmentsView,
   detail: detailView,
   notifications: notificationsView,
@@ -1146,7 +1253,7 @@ const refresh = async () => {
     state.user = data.user;
 
     if (first) {
-      state.view = data.user.role === 'Admin' ? 'users' : 'assignments';
+      state.view = data.user.role === 'Admin' ? 'users' : 'home';
       state.seen = new Set(db.notifications.map(n => n.id));
     }
 

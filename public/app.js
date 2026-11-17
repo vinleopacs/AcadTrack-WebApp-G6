@@ -45,6 +45,8 @@ const ICONS = {
   file: '<path d="M7 3h7l4 4v14H7z"/>',
   logout: '<path d="M10 4H5v16h5"/><path d="m15 8 4 4-4 4M19 12H9"/>',
   home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/>',
+  copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5h10"/>',
+  upload: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 20h14"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>'
 };
 
@@ -521,6 +523,63 @@ const pendingOf = c => db.invites.filter(i => i[0] == c.id).map(i => i[1]);
 
 const studentsOf = c => db.enrollments.filter(e => e[1] == c.id).map(e => user(e[0])).filter(Boolean);
 
+const TONES = [['#5b4785', '#ece6f7'], ['#1f7a73', '#dcf1ee'], ['#9a6209', '#fdf0dd'], ['#a33a5a', '#fbe6ec'], ['#2f5f9e', '#e2ecf8'], ['#5c7a1f', '#ecf3dc']];
+const tone = c => TONES[[...c.code].reduce((h, ch) => h + ch.charCodeAt(0), 0) % TONES.length];
+const toneStyle = c => `--tone:${tone(c)[0]};--tone-bg:${tone(c)[1]}`;
+const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const nextClass = c => {
+  if (!c.days || !c.days.length || c.start == null) return '';
+  const today = new Date().getDay();
+  for (let i = 0; i < 8; i++) {
+    const d = (today + i) % 7;
+    if (!c.days.includes(d) || (i === 0 && nowMin() >= c.end)) continue;
+    if (i === 0) return nowMin() >= c.start ? 'Happening now' : `Today · ${fmtMin(c.start)}`;
+    return `${i === 1 ? 'Tomorrow' : DAY_NAMES[d]} · ${fmtMin(c.start)}`;
+  }
+  return '';
+};
+
+const classCard = c => {
+  const teacher = state.user.role === 'Teacher';
+  const prof = user(c.teacherId);
+  const mats = db.materials.filter(m => m.classId == c.id);
+  const fresh = mats.filter(m => m.posted >= day(-3)).length;
+  const [code, title] = c.name.split(' — ');
+  const next = nextClass(c);
+  const who = prof ? prof.name : c.faculty || '';
+
+  return `
+    <article class="ccard" style="${toneStyle(c)}">
+      <button class="ccard-main" data-action="openClassDetail" data-id="${c.id}">
+        <span class="ccard-banner">
+          <span class="tags">${c.group ? `<em>Group ${esc(c.group)}</em>` : ''}${fresh ? `<em class="fresh">${fresh} new</em>` : ''}</span>
+          <b>${esc(code)}</b>
+          ${title ? `<span>${esc(title)}</span>` : ''}
+        </span>
+        <span class="ccard-body">
+          ${who ? `<span class="ccard-prof"><span class="avatar">${esc(initials(who))}</span>${esc(prof ? displayName(prof) : who)}</span>` : ''}
+          <span class="ccard-sched">${(c.dayText || '').split(' ').filter(Boolean).map(d => `<i>${esc(d)}</i>`).join('')}${c.start != null ? `<span>${fmtMin(c.start)} – ${fmtMin(c.end)}</span>` : ''}${c.room ? `<span>· ${esc(c.room)}</span>` : ''}</span>
+          ${next ? `<span class="ccard-next ${next.startsWith('Today') || next.startsWith('Happening') ? 'today' : ''}">${icon('clock', 16)} ${next}</span>` : ''}
+        </span>
+      </button>
+      <footer class="ccard-foot">
+        ${teacher ? `
+          <button class="code-chip" data-action="copyCode" data-id="${esc(c.joinCode)}" aria-label="Copy join code ${esc(c.joinCode)}">${esc(c.joinCode)}${icon('copy', 15)}</button>
+          <span>${icon('user', 16)}${studentsOf(c).length}${pendingOf(c).length ? ` +${pendingOf(c).length} pending` : ''}</span>
+          <button class="icon-btn" data-action="openRoster" data-id="${c.id}" aria-label="Upload class list" title="Upload class list">${icon('upload', 18)}</button>`
+        : `<span>${icon('file', 16)}${mats.length} material${mats.length === 1 ? '' : 's'}</span>`}
+      </footer>
+    </article>`;
+};
+
+const emptyClasses = text => `
+  <div class="empty-state">
+    <span class="tile">${icon('book', 30)}</span>
+    <b>No classes yet</b>
+    <p>${text}</p>
+  </div>`;
+
 const teacherClassesView = () => `
   <header class="page-head">
     <div>
@@ -530,16 +589,7 @@ const teacherClassesView = () => `
     <button class="btn primary end" data-action="openNewClass">${icon('plus', 18)} New class</button>
   </header>
 
-  ${myClasses().map(c => `
-    <div class="class-card">
-      <div class="info">
-        <b>${esc(c.name)}${c.group ? ` · Group ${esc(c.group)}` : ''}</b>
-        <span>Join code: <b class="join">${esc(c.joinCode || c.code)}</b> · ${studentsOf(c).length} students</span>
-        <small>${esc(c.schedule)}</small>
-      </div>
-      <button class="btn" data-action="openRoster" data-id="${c.id}">Upload class list</button>
-      <button class="btn" data-action="openClassDetail" data-id="${c.id}">View</button>
-    </div>`).join('') || '<p class="empty">No classes yet. Click New class to create one.</p>'}`;
+  ${myClasses().length ? `<div class="ccards">${myClasses().map(classCard).join('')}</div>` : emptyClasses('Click New class and upload your class list to get started.')}`;
 
 const safeLink = url => (/^https?:\/\//i.test(url) ? url : '');
 
@@ -553,11 +603,14 @@ const classDetailView = () => {
   return `
     <button class="back" data-action="nav" data-id="classes">${icon('back', 18)} Back to classes</button>
 
+    <section class="class-banner" style="${toneStyle(c)}">
+      <span class="tags">${c.group ? `<em>Group ${esc(c.group)}</em>` : ''}${teacher ? `<button class="code-chip" data-action="copyCode" data-id="${esc(c.joinCode)}" aria-label="Copy join code ${esc(c.joinCode)}">${esc(c.joinCode)}${icon('copy', 15)}</button>` : ''}</span>
+      <h1>${esc(c.name.split(' — ')[0])}</h1>
+      ${c.name.split(' — ')[1] ? `<p>${esc(c.name.split(' — ')[1])}</p>` : ''}
+      <small>${esc(c.schedule)}${teacher ? ` · ${studentsOf(c).length} student${studentsOf(c).length === 1 ? '' : 's'}${pendingOf(c).length ? ` · ${pendingOf(c).length} pending` : ''}` : user(c.teacherId) ? ` · ${esc(displayName(user(c.teacherId)))}` : ''}</small>
+    </section>
+
     <header class="page-head">
-      <div>
-        <h1>${esc(c.name)}${c.group ? ` · Group ${esc(c.group)}` : ''}</h1>
-        <p class="sub">${esc(c.schedule)}${teacher ? ` · Join code: <b class="join">${esc(c.joinCode || c.code)}</b> · ${studentsOf(c).length} students · ${pendingOf(c).length} pending` : ''}</p>
-      </div>
       ${teacher ? `<div class="end">
         <button class="btn" data-action="openEditClass">Edit class</button>
         <button class="btn danger" data-action="deleteClass">Delete class</button>
@@ -613,15 +666,7 @@ const classesView = () => state.user.role === 'Teacher' ? teacherClassesView() :
     </div>
   </header>
 
-  ${myClasses().map(c => `
-    <div class="class-card">
-      <div class="info">
-        <b>${esc(c.name)}</b>
-        <span>${esc(user(c.teacherId) ? displayName(user(c.teacherId)) : c.faculty)}</span>
-        <small>${esc(c.schedule)}</small>
-      </div>
-      <button class="btn" data-action="openClassDetail" data-id="${c.id}">Materials (${db.materials.filter(m => m.classId == c.id).length})</button>
-    </div>`).join('') || '<p class="empty">No classes yet. Your professor will add you, or you can enter a class code with Add class.</p>'}`;
+  ${myClasses().length ? `<div class="ccards">${myClasses().map(classCard).join('')}</div>` : emptyClasses('Your professor will add you, or enter a class code with Add class to join one.')}`;
 
 const ATT = { Present: 'present', Absent: 'absent', Excused: 'excused', 'No Class': 'noclass' };
 
@@ -1381,6 +1426,10 @@ const actions = {
     toast('Marked as completed');
   },
 
+  copyCode(code) {
+    navigator.clipboard.writeText(code).then(() => toast(`Join code ${code} copied`), () => toast(code));
+  },
+
   async readNotification(id) {
     await api('POST', `/notifications/${id}/read`, {});
   },
@@ -1616,7 +1665,7 @@ const actions = {
   }
 };
 
-const LOCAL = ['openEditClass', 'openEditMaterial', 'showForgot', 'hideForgot', 'nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'addLoadRow', 'removeLoadRow', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser', 'openSetPassword'];
+const LOCAL = ['copyCode', 'openEditClass', 'openEditMaterial', 'showForgot', 'hideForgot', 'nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'addLoadRow', 'removeLoadRow', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser', 'openSetPassword'];
 
 let running = false;
 

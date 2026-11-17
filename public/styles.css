@@ -1557,3 +1557,253 @@ main {
     height: 36px;
   }
 }
+
+.ccards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.ccard {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: 24px;
+  background: var(--panel);
+  box-shadow: 0 10px 40px rgba(70, 50, 110, 0.07);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.ccard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 44px rgba(70, 50, 110, 0.13);
+}
+
+.ccard-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ccard-banner,
+.class-banner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 20px 22px 18px;
+  background: var(--tone-bg);
+  color: var(--tone);
+}
+
+.ccard-banner::after,
+.class-banner::after {
+  content: '';
+  position: absolute;
+  right: -30px;
+  top: -40px;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 18px solid var(--tone);
+  opacity: 0.08;
+}
+
+.ccard-banner b {
+  font-size: 24px;
+  line-height: 1.2;
+}
+
+.ccard-banner > span:last-child {
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 24px;
+  margin-bottom: 6px;
+}
+
+.tags em,
+.code-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--tone);
+  font-style: normal;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tags em.fresh {
+  background: var(--tone);
+  color: #fff;
+}
+
+.ccard-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 22px;
+}
+
+.ccard-prof {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+}
+
+.ccard-prof .avatar {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--tone-bg);
+  color: var(--tone);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ccard-sched {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.ccard-sched i {
+  min-width: 26px;
+  padding: 2px 7px;
+  border-radius: 8px;
+  background: #efeff1;
+  color: var(--text);
+  font-style: normal;
+  font-weight: 600;
+  font-size: 12px;
+  text-align: center;
+}
+
+.ccard-next {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  padding: 5px 12px;
+  border-radius: 99px;
+  background: #efeff1;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ccard-next.today {
+  background: var(--tone);
+  color: #fff;
+}
+
+.ccard-foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px 12px 22px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.ccard-foot > span {
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.ccard-foot .code-chip,
+.class-banner .code-chip {
+  border: 0;
+  background: var(--tone-bg);
+  font-family: ui-monospace, Menlo, monospace;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+}
+
+.class-banner .code-chip {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: #efeff1;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.class-banner {
+  margin-bottom: 20px;
+  padding: 26px 30px;
+  border-radius: 26px;
+  overflow: hidden;
+}
+
+.class-banner h1 {
+  font-size: 32px;
+}
+
+.class-banner p {
+  font-size: 16px;
+}
+
+.class-banner small {
+  margin-top: 6px;
+  color: var(--text);
+  opacity: 0.65;
+  font-size: 14px;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 56px 24px;
+  border-radius: 26px;
+  background: var(--panel);
+  text-align: center;
+}
+
+.empty-state .tile {
+  width: 72px;
+  height: 72px;
+  margin-bottom: 8px;
+  border-radius: 22px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
+.empty-state p {
+  max-width: 340px;
+  color: var(--muted);
+}

@@ -60,7 +60,7 @@ const ICONS = {
 const icon = (name, size = 22) =>
   `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
 
-let db = { users: [], classes: [], enrollments: [], invites: [], assignments: [], submissions: [], notifications: [], attendance: [], materials: [] };
+let db = { users: [], classes: [], enrollments: [], invites: [], requests: [], requested: [], assignments: [], submissions: [], notifications: [], attendance: [], materials: [] };
 
 let config = { googleClientId: '', domain: 'usc.edu.ph', demo: false };
 
@@ -527,6 +527,8 @@ const genCode = () => {
   return code;
 };
 
+const requestsOf = c => db.requests.filter(r => r[0] == c.id).map(r => user(r[1])).filter(Boolean);
+
 const pendingOf = c => db.invites.filter(i => i[0] == c.id).map(i => i[1]);
 
 const studentsOf = c => db.enrollments.filter(e => e[1] == c.id).map(e => user(e[0])).filter(Boolean);
@@ -567,7 +569,7 @@ const classCard = c => {
       <button class="ccard-main" data-action="openClassDetail" data-id="${c.id}">
         <span class="ccard-banner ${pattern(c)}">
           <span class="subject" aria-hidden="true">${icon(subjectIcon(c), 26)}</span>
-          <span class="tags">${c.group ? `<em>Group ${esc(c.group)}</em>` : ''}${fresh ? `<em class="fresh">${fresh} new</em>` : ''}</span>
+          <span class="tags">${c.group ? `<em>Group ${esc(c.group)}</em>` : ''}${fresh ? `<em class="fresh">${fresh} new</em>` : ''}${teacher && requestsOf(c).length ? `<em class="fresh">${requestsOf(c).length} request${requestsOf(c).length === 1 ? '' : 's'}</em>` : ''}</span>
           <b>${esc(code)}</b>
           ${title ? `<span>${esc(title)}</span>` : ''}
         </span>
@@ -586,6 +588,17 @@ const classCard = c => {
       </footer>
     </article>`;
 };
+
+const requestCard = c => `
+  <article class="ccard waiting" style="${toneStyle(c)}">
+    <span class="ccard-banner ${pattern(c)}">
+      <span class="subject" aria-hidden="true">${icon(subjectIcon(c), 26)}</span>
+      <span class="tags">${c.group ? `<em>Group ${esc(c.group)}</em>` : ''}</span>
+      <b>${esc(c.name.split(' — ')[0])}</b>
+      ${c.name.split(' — ')[1] ? `<span>${esc(c.name.split(' — ')[1])}</span>` : ''}
+    </span>
+    <footer class="ccard-foot"><span>${icon('clock', 16)}Waiting for your professor to approve</span></footer>
+  </article>`;
 
 const emptyClasses = text => `
   <div class="empty-state">
@@ -634,6 +647,17 @@ const classDetailView = () => {
       </div>` : ''}
     </header>
 
+    ${teacher && requestsOf(c).length ? `
+      <div class="group-label">Join requests</div>
+      <section class="panel">
+        ${requestsOf(c).map(u => `
+          <div class="user-row">
+            <div class="info">${esc(u.name)}<small>${esc(u.email)}</small></div>
+            <button class="btn" data-action="declineRequest" data-id="${u.id}">Decline</button>
+            <button class="btn primary" data-action="approveRequest" data-id="${u.id}">Approve</button>
+          </div>`).join('')}
+      </section>` : ''}
+
     ${teacher ? `
       <div class="group-label">Students</div>
       <section class="panel">
@@ -681,7 +705,8 @@ const classesView = () => state.user.role === 'Teacher' ? teacherClassesView() :
     </div>
   </header>
 
-  ${myClasses().length ? `<div class="ccards">${myClasses().map(classCard).join('')}</div>` : emptyClasses('Your professor will add you, or enter a class code with Add class to join one.')}`;
+  ${myClasses().length ? `<div class="ccards">${myClasses().map(classCard).join('')}</div>` : db.requested.length ? '' : emptyClasses('Your professor will add you, or enter a class code with Add class to join one.')}
+  ${db.requested.length ? `<div class="group-label">Waiting for approval</div><div class="ccards">${db.requested.map(requestCard).join('')}</div>` : ''}`;
 
 const ATT = { Present: 'present', Absent: 'absent', Excused: 'excused', 'No Class': 'noclass' };
 
@@ -1184,7 +1209,7 @@ const modalHtml = () => {
       return modal(
         'Add class',
         `${field('classCode', 'Join code', { placeholder: 'e.g. K7P2QX', max: 50 })}
-         <p class="modal-hint">Ask your professor for the class join code.</p>`,
+         <p class="modal-hint">Ask your professor for the class join code. They’ll approve your request before you’re added.</p>`,
         CANCEL + '<button class="btn primary" data-action="saveClass">Add</button>'
       );
 
@@ -1449,6 +1474,16 @@ const actions = {
     toast('Marked as completed');
   },
 
+  async approveRequest(id) {
+    await api('POST', `/classes/${state.selectedClass}/requests/${id}/approve`, {});
+    toast('Student added');
+  },
+
+  async declineRequest(id) {
+    await api('POST', `/classes/${state.selectedClass}/requests/${id}/decline`, {});
+    toast('Request declined');
+  },
+
   copyCode(code) {
     navigator.clipboard.writeText(code).then(() => toast(`Join code ${code} copied`), () => toast(code));
   },
@@ -1476,9 +1511,9 @@ const actions = {
   async saveClass() {
     const code = value('classCode').trim();
     required(code);
-    await api('POST', '/classes/join', { code });
+    const res = await api('POST', '/classes/join', { code });
     state.modal = null;
-    toast('Class added');
+    toast(res.pending ? 'Request sent. You’ll be added once your professor approves it.' : 'Class added');
   },
 
   openLoad() {

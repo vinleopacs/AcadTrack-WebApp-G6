@@ -33,6 +33,8 @@ router.put('/classes/:id', requireRole('Teacher'), wrap(classes.update));
 router.delete('/classes/:id', requireRole('Teacher'), wrap(classes.remove));
 router.delete('/classes/:id/students/:studentId', requireRole('Teacher'), wrap(classes.removeStudent));
 router.post('/classes/:id/invites/remove', requireRole('Teacher'), wrap(classes.removeInvite));
+router.post('/classes/:id/requests/:studentId/approve', requireRole('Teacher'), wrap(classes.approve));
+router.post('/classes/:id/requests/:studentId/decline', requireRole('Teacher'), wrap(classes.decline));
 router.post('/classes/:id/roster', requireRole('Teacher'), wrap(classes.roster));
 router.post('/study-load', requireRole('Student'), wrap(classes.studyLoad));
 router.post('/demo-class', requireRole('Student'), wrap(classes.demoTimes));

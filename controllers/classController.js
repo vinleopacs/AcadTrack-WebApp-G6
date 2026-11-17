@@ -152,7 +152,33 @@ const join = async (req, res) => {
   if (!c) throw invalid('Class code not found. Ask your professor for the join code.');
   if (await classes.isEnrolled(req.user.id, c.id)) throw invalid('You are already enrolled in this class.');
 
-  await enrollStudent(req.user.id, c.id);
+  if (!c.teacherId || await classes.isInvited(c.id, req.user.email)) {
+    await enrollStudent(req.user.id, c.id);
+    await classes.uninvite(c.id, req.user.email);
+    return res.json({ added: true });
+  }
+
+  if (await classes.hasRequest(c.id, req.user.id)) throw invalid('You already asked to join this class. Wait for your professor to approve it.');
+
+  await classes.request(c.id, req.user.id);
+  await notifications.create({
+    userId: c.teacherId, classId: c.id, title: `${req.user.name} wants to join ${c.name}${c.group ? ` · Group ${c.group}` : ''}.`, message: 'Open the class to approve or decline.', type: 'CLASS'
+  });
+  res.json({ pending: true });
+};
+
+const answerRequest = approve => async (req, res) => {
+  const c = await ownClass(req, req.params.id);
+  const studentId = Number(req.params.studentId);
+
+  if (!(await classes.hasRequest(c.id, studentId))) throw invalid('This request is no longer pending.');
+
+  await classes.dropRequest(c.id, studentId);
+  if (approve) {
+    await enrollStudent(studentId, c.id);
+  } else {
+    await notifications.create({ userId: studentId, classId: null, title: `Your request to join ${c.name} was declined.`, message: 'Ask your professor if you think this is a mistake.', type: 'CLASS' });
+  }
   res.json({ ok: true });
 };
 
@@ -230,4 +256,4 @@ const claimInvites = async user => {
   await classes.clearInvites(user.email);
 };
 
-module.exports = { create, update, remove, removeStudent, removeInvite, join, roster, claimInvites, studyLoad, demoTimes, enrollStudent, ownClass };
+module.exports = { create, update, remove, approve: answerRequest(true), decline: answerRequest(false), removeStudent, removeInvite, join, roster, claimInvites, studyLoad, demoTimes, enrollStudent, ownClass };

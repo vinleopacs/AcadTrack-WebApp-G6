@@ -75,6 +75,26 @@ const unenroll = (studentId, classId) =>
 const uninvite = (classId, email) =>
   query('DELETE FROM TBL_INVITE WHERE CLASS_ID = $1 AND EMAIL = $2', [classId, email]);
 
+const request = (classId, studentId) =>
+  query('INSERT INTO TBL_JOIN_REQUEST (CLASS_ID, STUDENT_ID) VALUES ($1, $2) ON CONFLICT DO NOTHING', [classId, studentId]);
+
+const hasRequest = async (classId, studentId) =>
+  !!(await one('SELECT 1 FROM TBL_JOIN_REQUEST WHERE CLASS_ID = $1 AND STUDENT_ID = $2', [classId, studentId]));
+
+const dropRequest = (classId, studentId) =>
+  query('DELETE FROM TBL_JOIN_REQUEST WHERE CLASS_ID = $1 AND STUDENT_ID = $2', [classId, studentId]);
+
+const requests = async classIds => (classIds.length
+  ? (await many('SELECT CLASS_ID, STUDENT_ID FROM TBL_JOIN_REQUEST WHERE CLASS_ID = ANY($1) ORDER BY INSERT_DATE', [classIds])).map(r => [r.class_id, r.student_id])
+  : []);
+
+const requestedBy = async studentId => (await many(`
+  SELECT c.* FROM MST_CLASS c JOIN TBL_JOIN_REQUEST r ON r.CLASS_ID = c.CLASS_ID
+  WHERE r.STUDENT_ID = $1 AND c.DEL_FLG = 0 ORDER BY r.INSERT_DATE`, [studentId])).map(map);
+
+const isInvited = async (classId, email) =>
+  !!(await one('SELECT 1 FROM TBL_INVITE WHERE CLASS_ID = $1 AND EMAIL = $2', [classId, email]));
+
 const setTimes = (id, start, end) =>
   query('UPDATE MST_CLASS SET START_MIN = $2, END_MIN = $3, UPDATE_DATE = now() WHERE CLASS_ID = $1', [id, start, end]);
 
@@ -110,5 +130,5 @@ const enrollments = async classIds => (classIds.length
 
 module.exports = {
   byId, forTeacher, forStudent, byJoinCode, byCodeGroup, demo, joinCodeTaken,
-  create, update, edit, softDelete, unenroll, uninvite, setTimes, enroll, dropSchedule, invite, invitesFor, clearInvites, pending, isEnrolled, studentIds, enrollments, forClient
+  create, update, edit, softDelete, unenroll, uninvite, request, hasRequest, dropRequest, requests, requestedBy, isInvited, setTimes, enroll, dropSchedule, invite, invitesFor, clearInvites, pending, isEnrolled, studentIds, enrollments, forClient
 };

@@ -9,7 +9,7 @@ const { enrollStudent } = require('./classController');
 
 const getState = async (req, res) => {
   const me = req.user;
-  const db = { users: [], classes: [], enrollments: [], invites: [], assignments: [], submissions: [], notifications: [], attendance: [], materials: [] };
+  const db = { users: [], classes: [], enrollments: [], invites: [], requests: [], requested: [], assignments: [], submissions: [], notifications: [], attendance: [], materials: [] };
 
   if (me.role === 'Admin') {
     db.users = (await users.list()).map(users.publicUser);
@@ -29,13 +29,16 @@ const getState = async (req, res) => {
     db.classes = list.map(classes.forClient);
     db.enrollments = me.role === 'Teacher' ? await classes.enrollments(ids) : ids.map(id => [me.id, id]);
     db.invites = me.role === 'Teacher' ? await classes.pending(ids) : [];
+    db.requests = me.role === 'Teacher' ? await classes.requests(ids) : [];
+    db.requested = me.role === 'Student' ? (await classes.requestedBy(me.id)).map(classes.forClient) : [];
     db.assignments = await assignments.forClasses(ids);
     db.submissions = me.role === 'Student' ? await assignments.submissionsForStudent(me.id) : [];
     db.attendance = me.role === 'Student' ? await attendance.forStudent(me.id) : [];
     db.materials = await materials.forClasses(ids);
 
     const people = new Set([me.id, ...list.map(c => c.teacherId).filter(Boolean), ...db.assignments.map(a => a.teacherId)]);
-    if (me.role === 'Teacher') db.enrollments.forEach(e => people.add(e[0]));
+    if (me.role === 'Teacher') db.enrollments.concat(db.requests.map(r => [r[1]])).forEach(e => people.add(e[0]));
+    db.requested.forEach(c => c.teacherId && people.add(c.teacherId));
     db.users = (await users.findByIds([...people])).map(users.publicUser);
   }
 

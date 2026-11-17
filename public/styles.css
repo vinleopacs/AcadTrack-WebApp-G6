@@ -1898,3 +1898,15 @@ main {
   outline: 2px solid var(--text);
   outline-offset: 4px;
 }
+
+.ccard.waiting {
+  opacity: 0.75;
+}
+
+.ccard.waiting:hover {
+  transform: none;
+}
+
+.ccard.waiting .ccard-foot > span {
+  white-space: normal;
+}

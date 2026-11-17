@@ -659,13 +659,17 @@ const classDetailView = () => {
       </section>` : ''}
 
     ${teacher ? '' : `
-      <div class="group-label">People</div>
+      ${user(c.teacherId) ? `
+        <div class="group-label">Professor</div>
+        <section class="panel">
+          <div class="person prof"><span class="avatar">${esc(initials(user(c.teacherId).name))}</span>${esc(displayName(user(c.teacherId)))}</div>
+        </section>` : ''}
+
+      <div class="group-label">Classmates · ${studentsOf(c).length}</div>
       <section class="panel people">
-        ${user(c.teacherId) ? `<div class="person"><span class="avatar">${esc(initials(user(c.teacherId).name))}</span>${esc(displayName(user(c.teacherId)))}<small>Professor</small></div>` : ''}
         ${studentsOf(c).sort((x, y) => x.name.localeCompare(y.name)).map(u => `
           <div class="person"><span class="avatar">${esc(initials(u.name))}</span>${esc(u.name)}${u.id == state.user.id ? '<small>You</small>' : ''}</div>`).join('')}
-      </section>
-      <p class="people-count">${studentsOf(c).length} student${studentsOf(c).length === 1 ? '' : 's'}</p>`}
+      </section>`}
 
     ${teacher ? `
       <div class="group-label">Students</div>

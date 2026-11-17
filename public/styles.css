@@ -1947,13 +1947,18 @@ main {
   font-weight: 700;
 }
 
-.person:first-child .avatar {
+.person.prof {
+  border-top: 0;
+  padding: 18px 24px;
+  font-weight: 600;
+}
+
+.person.prof .avatar {
   background: var(--tone-bg, var(--accent-soft));
   color: var(--tone, var(--accent-text));
 }
 
-.people-count {
-  padding: 8px 32px 0;
-  color: var(--faint);
-  font-size: 14px;
+
+.people .person {
+  border-top: 0;
 }

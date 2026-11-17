@@ -4,6 +4,7 @@ const assignments = require('../models/assignments');
 const users = require('../models/users');
 const notifications = require('../models/notifications');
 const attendance = require('../models/attendance');
+const materials = require('../models/materials');
 const { invalid, forbidden, notFound, required } = require('../utils/errors');
 const { parseDays, today, nowMin } = require('../utils/time');
 
@@ -23,9 +24,22 @@ const toMinutes = t => {
 };
 
 const enrollStudent = async (studentId, classId) => {
+  const c = await classes.byId(classId);
+  const work = await assignments.forClasses([classId]);
+  const mats = await materials.forClasses([classId]);
+
   await classes.enroll(studentId, classId);
-  for (const a of await assignments.forClasses([classId])) {
-    await assignments.addSubmissions(a.id, [studentId]);
+  for (const a of work) await assignments.addSubmissions(a.id, [studentId]);
+
+  if (c && c.teacherId) {
+    const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+    await notifications.createMany([{
+      userId: studentId,
+      classId,
+      title: `You were added to ${c.name}${c.group ? ` · Group ${c.group}` : ''}.`,
+      message: mats.length || work.length ? `${plural(mats.length, 'material')} and ${plural(work.length, 'assignment')} are already posted. Open Classes to see them.` : 'Open Classes to see it.',
+      type: 'CLASS'
+    }]);
   }
 };
 

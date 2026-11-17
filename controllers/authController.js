@@ -1,13 +1,19 @@
 const bcrypt = require('bcryptjs');
 const { OAuth2Client } = require('google-auth-library');
 const users = require('../models/users');
+const { claimInvites } = require('./classController');
 const { invalid, forbidden } = require('../utils/errors');
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const DOMAIN = (process.env.ALLOWED_DOMAIN || 'usc.edu.ph').toLowerCase();
 const google = new OAuth2Client(CLIENT_ID);
 
-const startSession = (req, user, remember) => new Promise((resolve, reject) => {
+const startSession = async (req, user, remember) => {
+  await claimInvites(user);
+  await saveSession(req, user, remember);
+};
+
+const saveSession = (req, user, remember) => new Promise((resolve, reject) => {
   req.session.regenerate(err => {
     if (err) return reject(err);
     req.session.userId = user.id;

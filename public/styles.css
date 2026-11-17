@@ -1339,3 +1339,13 @@ main {
 .modal .auth-or::after {
   border-color: #d6d6dc;
 }
+
+.panel.pending div {
+  padding: 14px 32px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.panel.pending div:first-child {
+  border-top: 0;
+}

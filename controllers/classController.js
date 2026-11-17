@@ -52,9 +52,7 @@ const create = async (req, res) => {
   const display = String(raw).trim().toUpperCase();
   const code = display.replace(/\s+/g, '');
   const groupNo = String(group).trim();
-  const existing = await classes.byCodeGroup(code, groupNo);
-
-  if (existing && existing.teacherId && existing.group === groupNo) {
+  if (await classes.byCodeGroup(code, groupNo, true)) {
     throw invalid('That course and group already has a class.');
   }
 
@@ -70,9 +68,7 @@ const create = async (req, res) => {
     faculty: req.user.name
   };
 
-  const c = existing && existing.group === groupNo
-    ? await classes.update(existing.id, fields)
-    : await classes.create({ ...fields, code, group: groupNo });
+  const c = await classes.create({ ...fields, code, group: groupNo });
 
   res.status(201).json({ joinCode: c.joinCode });
 };
@@ -102,7 +98,10 @@ const roster = async (req, res) => {
   for (const email of emails) {
     const u = await users.findByEmail(email);
 
-    if (!u || u.role !== 'Student') {
+    if (!u) {
+      await classes.invite(c.id, email);
+      result.missing.push(email);
+    } else if (u.role !== 'Student') {
       result.missing.push(email);
     } else if (await classes.isEnrolled(u.id, c.id)) {
       result.already++;
@@ -131,20 +130,18 @@ const studyLoad = async (req, res) => {
 
   if (!valid.length) throw invalid('No subjects found. Copy the whole study load table and paste it again.');
 
-  await classes.dropAll(req.user.id);
-  await assignments.clearStudent(req.user.id);
-  await notifications.clearUser(req.user.id);
+  await classes.dropSchedule(req.user.id);
 
   for (const { code, name, days, start, end, ...r } of valid) {
     const group = String(r.group || '').trim();
-    let c = await classes.byCodeGroup(code, group);
+    let c = await classes.byCodeGroup(code, group, false);
 
     if (!c) {
       c = await classes.create({
         code, group, name, faculty: String(r.faculty || '').slice(0, 150),
         days, dayText: String(r.dayText || '').slice(0, 30), start, end, room: String(r.room || '').slice(0, 30)
       });
-    } else if (!c.teacherId) {
+    } else {
       c = await classes.update(c.id, {
         ...c, days, dayText: String(r.dayText || '').slice(0, 30), start, end,
         room: String(r.room || '').slice(0, 30), faculty: String(r.faculty || c.faculty).slice(0, 150)
@@ -174,4 +171,12 @@ const demoTimes = async (req, res) => {
   res.json({ start, end });
 };
 
-module.exports = { create, join, roster, studyLoad, demoTimes, enrollStudent, ownClass };
+const claimInvites = async user => {
+  if (user.role !== 'Student') return;
+  for (const id of await classes.invitesFor(user.email)) {
+    if (!(await classes.isEnrolled(user.id, id))) await enrollStudent(user.id, id);
+  }
+  await classes.clearInvites(user.email);
+};
+
+module.exports = { create, join, roster, claimInvites, studyLoad, demoTimes, enrollStudent, ownClass };

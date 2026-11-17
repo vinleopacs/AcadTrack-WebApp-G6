@@ -30,13 +30,10 @@ const exists = async (userId, type, { assignmentId = null, classId = null, date 
   AND ($3::int IS NULL OR ASSIGNMENT_ID = $3) AND ($4::int IS NULL OR CLASS_ID = $4) AND ($5::date IS NULL OR NOTIF_DATE = $5)`,
   [userId, type, assignmentId, classId, date]));
 
-const clearUser = userId =>
-  query('UPDATE TBL_NOTIFICATION SET DEL_FLG = 1 WHERE USER_ID = $1', [userId]);
-
 const markRead = (id, userId) =>
   query('UPDATE TBL_NOTIFICATION SET IS_READ = 1 WHERE NOTIFICATION_ID = $1 AND USER_ID = $2', [id, userId]);
 
 const clearClassDay = (classId, date, userId) =>
   query('UPDATE TBL_NOTIFICATION SET DEL_FLG = 1 WHERE CLASS_ID = $1 AND NOTIF_DATE = $2 AND USER_ID = $3', [classId, date, userId]);
 
-module.exports = { forUser, create, createMany, exists, markRead, clearUser, clearClassDay };
+module.exports = { forUser, create, createMany, exists, markRead, clearClassDay };

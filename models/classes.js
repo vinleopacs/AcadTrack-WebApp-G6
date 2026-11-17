@@ -39,10 +39,9 @@ const forStudent = async id => (await many(`
 
 const byJoinCode = async code => map(await one('SELECT * FROM MST_CLASS WHERE JOIN_CODE = $1 AND DEL_FLG = 0', [code]));
 
-const byCodeGroup = async (code, group) => map(await one(`
-  SELECT * FROM MST_CLASS WHERE CODE = $1 AND DEL_FLG = 0 AND IS_DEMO = 0
-  AND (GROUP_NO = '' OR $2 = '' OR GROUP_NO = $2)
-  ORDER BY (TEACHER_ID IS NOT NULL) DESC LIMIT 1`, [code, group]));
+const byCodeGroup = async (code, group, teacher) => map(await one(`
+  SELECT * FROM MST_CLASS WHERE CODE = $1 AND GROUP_NO = $2 AND DEL_FLG = 0 AND IS_DEMO = 0
+  AND (TEACHER_ID IS NOT NULL) = $3 LIMIT 1`, [code, group, teacher]));
 
 const demo = async () => map(await one('SELECT * FROM MST_CLASS WHERE IS_DEMO = 1 AND DEL_FLG = 0 LIMIT 1'));
 
@@ -68,8 +67,21 @@ const enroll = (studentId, classId) => query(`
   INSERT INTO TBL_ENROLLMENT (STUDENT_ID, CLASS_ID) VALUES ($1, $2)
   ON CONFLICT (STUDENT_ID, CLASS_ID) DO UPDATE SET DEL_FLG = 0`, [studentId, classId]);
 
-const dropAll = studentId =>
-  query('UPDATE TBL_ENROLLMENT SET DEL_FLG = 1 WHERE STUDENT_ID = $1', [studentId]);
+const dropSchedule = studentId => query(`
+  UPDATE TBL_ENROLLMENT SET DEL_FLG = 1 WHERE STUDENT_ID = $1
+  AND CLASS_ID IN (SELECT CLASS_ID FROM MST_CLASS WHERE TEACHER_ID IS NULL)`, [studentId]);
+
+const invite = (classId, email) =>
+  query('INSERT INTO TBL_INVITE (CLASS_ID, EMAIL) VALUES ($1, $2) ON CONFLICT DO NOTHING', [classId, email]);
+
+const invitesFor = async email =>
+  (await many('SELECT CLASS_ID FROM TBL_INVITE WHERE EMAIL = $1', [email])).map(r => r.class_id);
+
+const clearInvites = email => query('DELETE FROM TBL_INVITE WHERE EMAIL = $1', [email]);
+
+const pending = async classIds => (classIds.length
+  ? (await many('SELECT CLASS_ID, EMAIL FROM TBL_INVITE WHERE CLASS_ID = ANY($1) ORDER BY EMAIL', [classIds])).map(r => [r.class_id, r.email])
+  : []);
 
 const isEnrolled = async (studentId, classId) =>
   !!(await one('SELECT 1 FROM TBL_ENROLLMENT WHERE STUDENT_ID = $1 AND CLASS_ID = $2 AND DEL_FLG = 0', [studentId, classId]));
@@ -83,5 +95,5 @@ const enrollments = async classIds => (classIds.length
 
 module.exports = {
   byId, forTeacher, forStudent, byJoinCode, byCodeGroup, demo, joinCodeTaken,
-  create, update, setTimes, enroll, dropAll, isEnrolled, studentIds, enrollments, forClient
+  create, update, setTimes, enroll, dropSchedule, invite, invitesFor, clearInvites, pending, isEnrolled, studentIds, enrollments, forClient
 };

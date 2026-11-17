@@ -38,9 +38,6 @@ const addSubmissions = (assignmentId, studentIds, client) => (studentIds.length
     SELECT unnest($1::int[]), $2 ON CONFLICT DO NOTHING`, [studentIds, assignmentId])
   : null);
 
-const clearStudent = studentId =>
-  query('DELETE FROM TBL_STUDENT_ASSIGNMENT WHERE STUDENT_ID = $1', [studentId]);
-
 const submissionsForStudent = async id => (await many(`
   SELECT s.* FROM TBL_STUDENT_ASSIGNMENT s JOIN TBL_ASSIGNMENT a ON a.ASSIGNMENT_ID = s.ASSIGNMENT_ID
   WHERE s.STUDENT_ID = $1 AND s.DEL_FLG = 0 AND a.DEL_FLG = 0`, [id])).map(mapSub);
@@ -63,6 +60,6 @@ const pendingDueBetween = async (from, to) => many(`
   WHERE s.STATUS = 'PENDING' AND s.DEL_FLG = 0 AND a.DEL_FLG = 0 AND a.DUE_DATE BETWEEN $1 AND $2`, [from, to]);
 
 module.exports = {
-  byId, forClasses, create, update, softDelete, addSubmissions, clearStudent,
+  byId, forClasses, create, update, softDelete, addSubmissions,
   submissionsForStudent, submissionsFor, submissionById, complete, pendingDueBetween
 };

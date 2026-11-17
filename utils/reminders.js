@@ -13,7 +13,7 @@ const classReminders = async studentId => {
   const mins = nowMin();
   const date = today();
   const soon = (await classes.forStudent(studentId))
-    .filter(c => c.days && c.days.includes(weekday()) && mins >= c.start - 15 && mins < c.start);
+    .filter(c => !c.teacherId && c.days && c.days.includes(weekday()) && mins >= c.start - 15 && mins < c.start);
 
   for (const c of soon) {
     if (await notifications.exists(studentId, 'CLASS', { classId: c.id, date })) continue;

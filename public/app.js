@@ -50,7 +50,7 @@ const ICONS = {
 const icon = (name, size = 22) =>
   `<svg class="icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${ICONS[name]}</svg>`;
 
-let db = { users: [], classes: [], enrollments: [], assignments: [], submissions: [], notifications: [], attendance: [], materials: [] };
+let db = { users: [], classes: [], enrollments: [], invites: [], assignments: [], submissions: [], notifications: [], attendance: [], materials: [] };
 
 let config = { googleClientId: '', domain: 'usc.edu.ph', demo: false };
 
@@ -99,10 +99,14 @@ const shortCode = c => c.code.replace(/^([A-Z]+)(?=\d)/, '$1 ');
 const unreadCount = () => db.notifications.filter(n => n.userId == state.user.id && !n.read).length;
 const signedToday = c => db.attendance.find(x => x.studentId == state.user.id && x.classId == c.id && x.date == day(0));
 
+const enrolled = c => db.enrollments.some(e => e[0] == state.user.id && e[1] == c.id);
+
 const myClasses = () =>
   state.user.role === 'Teacher'
     ? db.classes.filter(c => c.teacherId == state.user.id)
-    : db.classes.filter(c => db.enrollments.some(e => e[0] == state.user.id && e[1] == c.id));
+    : db.classes.filter(c => c.teacherId && enrolled(c));
+
+const scheduleClasses = () => db.classes.filter(c => !c.teacherId && enrolled(c));
 
 const DAYS = { Su: 0, M: 1, T: 2, W: 3, Th: 4, F: 5, Sat: 6 };
 
@@ -480,6 +484,8 @@ const genCode = () => {
   return code;
 };
 
+const pendingOf = c => db.invites.filter(i => i[0] == c.id).map(i => i[1]);
+
 const studentsOf = c => db.enrollments.filter(e => e[1] == c.id).map(e => user(e[0])).filter(Boolean);
 
 const teacherClassesView = () => `
@@ -517,13 +523,17 @@ const classDetailView = () => {
     <header class="page-head">
       <div>
         <h1>${esc(c.name)}${c.group ? ` · Group ${esc(c.group)}` : ''}</h1>
-        <p class="sub">${esc(c.schedule)}${teacher ? ` · Join code: <b class="join">${esc(c.joinCode || c.code)}</b> · ${studentsOf(c).length} students` : ''}</p>
+        <p class="sub">${esc(c.schedule)}${teacher ? ` · Join code: <b class="join">${esc(c.joinCode || c.code)}</b> · ${studentsOf(c).length} students · ${pendingOf(c).length} pending` : ''}</p>
       </div>
       ${teacher ? `<div class="end">
         <button class="btn" data-action="openRoster" data-id="${c.id}">Upload class list</button>
         <button class="btn primary" data-action="openMaterial">${icon('plus', 18)} Add material</button>
       </div>` : ''}
     </header>
+
+    ${teacher && pendingOf(c).length ? `
+      <div class="group-label">Pending (no account yet)</div>
+      <section class="panel pending">${pendingOf(c).map(e => `<div>${esc(e)}</div>`).join('')}</section>` : ''}
 
     <div class="group-label">Study materials</div>
     <section class="panel">
@@ -548,7 +558,7 @@ const classesView = () => state.user.role === 'Teacher' ? teacherClassesView() :
   <header class="page-head">
     <div>
       <h1>My classes</h1>
-      <p class="sub">Classes you’re enrolled in this term.</p>
+      <p class="sub">Classes your professors added you to. Got a class code? Use Add class.</p>
     </div>
     <div class="end">
       <button class="btn soft" data-action="openAddClass">${icon('plus', 18)} Add class</button>
@@ -563,7 +573,7 @@ const classesView = () => state.user.role === 'Teacher' ? teacherClassesView() :
         <small>${esc(c.schedule)}</small>
       </div>
       <button class="btn" data-action="openClassDetail" data-id="${c.id}">Materials (${db.materials.filter(m => m.classId == c.id).length})</button>
-    </div>`).join('')}`;
+    </div>`).join('') || '<p class="empty">No classes yet. Your professor will add you, or you can enter a class code with Add class.</p>'}`;
 
 const ATT = { Present: 'present', Absent: 'absent', Excused: 'excused', 'No Class': 'noclass' };
 
@@ -614,7 +624,7 @@ const calendarHtml = mine => {
 };
 
 const attendanceView = () => {
-  const today = myClasses().filter(c => !c.days || c.days.includes(new Date().getDay()));
+  const today = scheduleClasses().filter(c => !c.days || c.days.includes(new Date().getDay()));
   const history = db.attendance
     .filter(a => a.studentId == state.user.id)
     .sort((x, y) => y.date.localeCompare(x.date));
@@ -661,7 +671,7 @@ const attendanceView = () => {
 
     <div class="group-label">By class</div>
     <section class="panel">
-      ${myClasses().map(c => {
+      ${scheduleClasses().map(c => {
         const recs = history.filter(a => a.classId == c.id);
         const r = rateOf(recs);
         return `
@@ -825,7 +835,7 @@ const studyLoadModal = () => modal(
        <datalist id="courseList">${Object.keys(COURSES).map(c => `<option value="${c}">`).join('')}</datalist>
        <button class="btn" data-action="addLoadRow">Add subject</button>
        <p class="modal-hint">Check each subject and fix anything wrong before saving.</p>`
-    : `<p class="modal-note">This replaces your current classes, assignments and notifications. Your attendance history is kept.</p>
+    : `<p class="modal-note">This sets your class schedule for attendance and replaces the one you uploaded before. Your classes and attendance history are kept.</p>
        <label class="field">
          <span>Study load</span>
          <textarea id="studyLoad" placeholder="Paste your study load here"></textarea>
@@ -860,8 +870,8 @@ const rosterModal = () => {
   if (r) {
     return modal(
       'Class list uploaded',
-      `<p class="modal-text"><b>${r.added}</b> added · <b>${r.already}</b> already in class · <b>${r.missing.length}</b> without accounts</p>
-       ${r.missing.length ? `<p class="modal-hint">These students don't have accounts yet. Once they make one, they can join using the code <b class="join">${esc(c.joinCode || c.code)}</b>:</p>
+      `<p class="modal-text"><b>${r.added}</b> added · <b>${r.already}</b> already in class · <b>${r.missing.length}</b> pending</p>
+       ${r.missing.length ? `<p class="modal-hint">These students don't have accounts yet. They'll be added automatically the first time they sign in. You can also give them the join code <b class="join">${esc(c.joinCode || c.code)}</b>:</p>
        <div class="missing">${r.missing.map(m => `<div>${esc(m)}</div>`).join('')}</div>` : ''}`,
       '<button class="btn primary" data-action="close">Done</button>'
     );
@@ -877,7 +887,7 @@ const rosterModal = () => {
        <span>Or paste the list</span>
        <textarea id="rosterText" placeholder="Name,Email&#10;Juan Dela Cruz,22100001@usc.edu.ph"></textarea>
      </label>
-     <p class="modal-hint">Any format works as long as each student has an email. Students with accounts are added right away.</p>`,
+     <p class="modal-hint">Any format works as long as each student has an email. Students with accounts are added right away; the rest stay pending until they sign in.</p>`,
     CANCEL + '<button class="btn primary" data-action="saveRoster">Add students</button>'
   );
 };
@@ -1235,7 +1245,7 @@ const actions = {
       if (window.Notification && Notification.permission === 'default') Notification.requestPermission();
     } catch {}
 
-    toast(`${rows.length} classes added from your study load`);
+    toast(`${rows.length} subjects added to your attendance schedule`);
     state.modal = null;
     state.loadRows = null;
   },

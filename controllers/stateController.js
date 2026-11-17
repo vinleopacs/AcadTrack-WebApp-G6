@@ -9,7 +9,7 @@ const { enrollStudent } = require('./classController');
 
 const getState = async (req, res) => {
   const me = req.user;
-  const db = { users: [], classes: [], enrollments: [], assignments: [], submissions: [], notifications: [], attendance: [], materials: [] };
+  const db = { users: [], classes: [], enrollments: [], invites: [], assignments: [], submissions: [], notifications: [], attendance: [], materials: [] };
 
   if (me.role === 'Admin') {
     db.users = (await users.list()).map(users.publicUser);
@@ -28,6 +28,7 @@ const getState = async (req, res) => {
 
     db.classes = list.map(classes.forClient);
     db.enrollments = me.role === 'Teacher' ? await classes.enrollments(ids) : ids.map(id => [me.id, id]);
+    db.invites = me.role === 'Teacher' ? await classes.pending(ids) : [];
     db.assignments = await assignments.forClasses(ids);
     db.submissions = me.role === 'Student' ? await assignments.submissionsForStudent(me.id) : [];
     db.attendance = me.role === 'Student' ? await attendance.forStudent(me.id) : [];

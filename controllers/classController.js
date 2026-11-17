@@ -120,20 +120,28 @@ const studyLoad = async (req, res) => {
 
   if (!rows.length) throw invalid('No subjects found. Copy the whole study load table and paste it again.');
 
-  for (const r of rows) {
-    const code = String(r.code || '').replace(/\s+/g, '').toUpperCase();
-    const days = Array.isArray(r.days) ? r.days.map(Number).filter(d => d >= 0 && d <= 6) : [];
-    const start = Number(r.start);
-    const end = Number(r.end);
+  const valid = rows.map(r => ({
+    ...r,
+    code: String(r.code || '').replace(/\s+/g, '').toUpperCase(),
+    name: String(r.code || '').trim().toUpperCase(),
+    days: Array.isArray(r.days) ? r.days.map(Number).filter(d => d >= 0 && d <= 6) : [],
+    start: Number(r.start),
+    end: Number(r.end)
+  })).filter(r => r.code && r.days.length && r.start >= 0 && r.end > r.start && r.end < 1440);
 
-    if (!code || !days.length || !(start >= 0 && end > start && end < 1440)) continue;
+  if (!valid.length) throw invalid('No subjects found. Copy the whole study load table and paste it again.');
 
+  await classes.dropAll(req.user.id);
+  await assignments.clearStudent(req.user.id);
+  await notifications.clearUser(req.user.id);
+
+  for (const { code, name, days, start, end, ...r } of valid) {
     const group = String(r.group || '').trim();
     let c = await classes.byCodeGroup(code, group);
 
     if (!c) {
       c = await classes.create({
-        code, group, name: String(r.code).trim().toUpperCase(), faculty: String(r.faculty || '').slice(0, 150),
+        code, group, name, faculty: String(r.faculty || '').slice(0, 150),
         days, dayText: String(r.dayText || '').slice(0, 30), start, end, room: String(r.room || '').slice(0, 30)
       });
     } else if (!c.teacherId) {
@@ -143,7 +151,7 @@ const studyLoad = async (req, res) => {
       });
     }
 
-    if (!(await classes.isEnrolled(req.user.id, c.id))) await enrollStudent(req.user.id, c.id);
+    await enrollStudent(req.user.id, c.id);
   }
 
   res.json({ ok: true });

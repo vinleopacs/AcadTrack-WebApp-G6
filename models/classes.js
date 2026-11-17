@@ -68,6 +68,9 @@ const enroll = (studentId, classId) => query(`
   INSERT INTO TBL_ENROLLMENT (STUDENT_ID, CLASS_ID) VALUES ($1, $2)
   ON CONFLICT (STUDENT_ID, CLASS_ID) DO UPDATE SET DEL_FLG = 0`, [studentId, classId]);
 
+const dropAll = studentId =>
+  query('UPDATE TBL_ENROLLMENT SET DEL_FLG = 1 WHERE STUDENT_ID = $1', [studentId]);
+
 const isEnrolled = async (studentId, classId) =>
   !!(await one('SELECT 1 FROM TBL_ENROLLMENT WHERE STUDENT_ID = $1 AND CLASS_ID = $2 AND DEL_FLG = 0', [studentId, classId]));
 
@@ -80,5 +83,5 @@ const enrollments = async classIds => (classIds.length
 
 module.exports = {
   byId, forTeacher, forStudent, byJoinCode, byCodeGroup, demo, joinCodeTaken,
-  create, update, setTimes, enroll, isEnrolled, studentIds, enrollments, forClient
+  create, update, setTimes, enroll, dropAll, isEnrolled, studentIds, enrollments, forClient
 };

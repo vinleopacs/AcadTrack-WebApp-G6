@@ -571,7 +571,7 @@ const calendarHtml = mine => {
   for (let d = 1; d <= total; d++) {
     const date = localDate(new Date(first.getFullYear(), first.getMonth(), d));
     const recs = mine.filter(a => a.date === date);
-    const tip = recs.map(a => `${klass(a.classId).name}: ${a.status}`).join('\n');
+    const tip = recs.map(a => `${a.className}: ${a.status}`).join('\n');
     cells.push(`
       <span class="cal-day ${date === day(0) ? 'today' : ''}" title="${esc(tip)}">
         <b>${d}</b>
@@ -656,7 +656,7 @@ const attendanceView = () => {
     <section class="panel">
       ${history.length ? `<table class="load-table">
         <tr><th>Date</th><th>Class</th><th>Status</th></tr>
-        ${history.map(a => `<tr><td>${formatDate(a.date)}</td><td>${esc(klass(a.classId).name)}</td><td>${attPill(a.status)}</td></tr>`).join('')}
+        ${history.map(a => `<tr><td>${formatDate(a.date)}</td><td>${esc(a.className)}</td><td>${attPill(a.status)}</td></tr>`).join('')}
       </table>` : '<p class="empty">No attendance yet.</p>'}
     </section>`;
 };
@@ -805,6 +805,7 @@ const studyLoadModal = () => modal(
          <textarea id="studyLoad" placeholder="Paste your study load here"></textarea>
        </label>
        <p class="modal-hint">Open your study load on the school portal, select the whole table, copy it and paste it here. Works from a phone, tablet or computer.</p>
+       <p class="modal-hint">This replaces your current classes, assignments and notifications. Your attendance history is kept.</p>
        <label class="field">
          <span>Or upload a screenshot</span>
          <input id="loadImage" type="file" accept="image/*">

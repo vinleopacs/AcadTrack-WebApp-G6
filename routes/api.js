@@ -29,6 +29,10 @@ router.get('/state', requireLogin, wrap(state.getState));
 
 router.post('/classes', requireRole('Teacher'), wrap(classes.create));
 router.post('/classes/join', requireRole('Student'), wrap(classes.join));
+router.put('/classes/:id', requireRole('Teacher'), wrap(classes.update));
+router.delete('/classes/:id', requireRole('Teacher'), wrap(classes.remove));
+router.delete('/classes/:id/students/:studentId', requireRole('Teacher'), wrap(classes.removeStudent));
+router.post('/classes/:id/invites/remove', requireRole('Teacher'), wrap(classes.removeInvite));
 router.post('/classes/:id/roster', requireRole('Teacher'), wrap(classes.roster));
 router.post('/study-load', requireRole('Student'), wrap(classes.studyLoad));
 router.post('/demo-class', requireRole('Student'), wrap(classes.demoTimes));
@@ -41,6 +45,7 @@ router.delete('/assignments/:id', requireRole('Teacher'), wrap(assignments.remov
 router.post('/submissions/:id/complete', requireRole('Student'), wrap(assignments.complete));
 
 router.post('/materials', requireRole('Teacher'), wrap(materials.create));
+router.put('/materials/:id', requireRole('Teacher'), wrap(materials.update));
 router.delete('/materials/:id', requireRole('Teacher'), wrap(materials.remove));
 router.get('/materials/:id/file', requireLogin, wrap(materials.download));
 

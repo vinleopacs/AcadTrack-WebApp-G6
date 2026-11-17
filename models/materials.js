@@ -26,7 +26,12 @@ const create = async m => map(await one(`
   VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING ${COLUMNS}`,
   [m.classId, m.createdBy, m.title, m.note, m.link, m.fileName, m.fileType, m.data, m.posted]));
 
+const update = (id, m) => (m.file
+  ? query('UPDATE TBL_MATERIAL SET TITLE = $2, NOTE = $3, LINK = $4, FILE_NAME = $5, FILE_TYPE = $6, FILE_DATA = $7 WHERE MATERIAL_ID = $1',
+    [id, m.title, m.note, m.link, m.file.name, m.file.type, m.file.data])
+  : query('UPDATE TBL_MATERIAL SET TITLE = $2, NOTE = $3, LINK = $4 WHERE MATERIAL_ID = $1', [id, m.title, m.note, m.link]));
+
 const softDelete = id =>
   query('UPDATE TBL_MATERIAL SET DEL_FLG = 1, FILE_DATA = NULL, DELETE_DATE = now() WHERE MATERIAL_ID = $1', [id]);
 
-module.exports = { forClasses, byId, file, create, softDelete };
+module.exports = { forClasses, byId, file, create, update, softDelete };

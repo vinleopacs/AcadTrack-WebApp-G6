@@ -60,6 +60,20 @@ const update = async (id, c) => map(await one(`
   [id, c.name, c.teacherId || null, c.joinCode || null, c.days ? c.days.join(',') : '', c.dayText || '',
     c.start ?? null, c.end ?? null, c.room || '', c.faculty || '']));
 
+const edit = (id, c) => query(`
+  UPDATE MST_CLASS SET CODE = $2, GROUP_NO = $3, NAME = $4, DAYS = $5, DAY_TEXT = $6,
+  START_MIN = $7, END_MIN = $8, ROOM = $9, UPDATE_DATE = now() WHERE CLASS_ID = $1`,
+  [id, c.code, c.group, c.name, c.days.join(','), c.dayText, c.start, c.end, c.room]);
+
+const softDelete = id =>
+  query('UPDATE MST_CLASS SET DEL_FLG = 1, DELETE_DATE = now() WHERE CLASS_ID = $1', [id]);
+
+const unenroll = (studentId, classId) =>
+  query('UPDATE TBL_ENROLLMENT SET DEL_FLG = 1 WHERE STUDENT_ID = $1 AND CLASS_ID = $2', [studentId, classId]);
+
+const uninvite = (classId, email) =>
+  query('DELETE FROM TBL_INVITE WHERE CLASS_ID = $1 AND EMAIL = $2', [classId, email]);
+
 const setTimes = (id, start, end) =>
   query('UPDATE MST_CLASS SET START_MIN = $2, END_MIN = $3, UPDATE_DATE = now() WHERE CLASS_ID = $1', [id, start, end]);
 
@@ -95,5 +109,5 @@ const enrollments = async classIds => (classIds.length
 
 module.exports = {
   byId, forTeacher, forStudent, byJoinCode, byCodeGroup, demo, joinCodeTaken,
-  create, update, setTimes, enroll, dropSchedule, invite, invitesFor, clearInvites, pending, isEnrolled, studentIds, enrollments, forClient
+  create, update, edit, softDelete, unenroll, uninvite, setTimes, enroll, dropSchedule, invite, invitesFor, clearInvites, pending, isEnrolled, studentIds, enrollments, forClient
 };

@@ -192,7 +192,39 @@ const parseStudyLoad = raw => {
   }).filter(Boolean);
 };
 
+const toHHMM = m => (m == null ? '' : `${pad(Math.floor(m / 60))}:${pad(m % 60)}`);
+
+const parseClassList = text => {
+  const t = fixOcr(text);
+  const code = Object.keys(COURSES).find(c => new RegExp(`(^|[^A-Z\\d])${c.replace(/\s+/g, '\\s*')}(?![A-Z\\d])`, 'i').test(t))
+    || (t.match(/\b[A-Z]{2,}(?:-[A-Z]+)?\s?\d{3,4}[A-Z]?\b/) || [''])[0];
+  const sched = [...t.matchAll(SCHED)][0];
+  const range = sched && parseRange(sched[0]);
+  const room = (sched ? t.slice(sched.index + sched[0].length) : t).match(ROOM);
+  return {
+    code,
+    group: (t.match(/group\s*#?\s*(\d+)/i) || [])[1] || '',
+    title: (COURSES[code] || '').toLowerCase().replace(/\b\w/g, ch => ch.toUpperCase()),
+    days: sched ? sched[1].match(/Sat|Su|Th|M|T|W|F/g).join(' ') : '',
+    start: range ? toHHMM(range.start) : '',
+    end: range ? toHHMM(range.end) : '',
+    room: room ? room[0] : '',
+    emails: [...new Set((text.match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g) || []).map(e => e.toLowerCase()))],
+    text
+  };
+};
+
 const nowMin = () => new Date().getHours() * 60 + new Date().getMinutes();
+
+const classForm = () => ({
+  code: value('newCode'),
+  group: value('newGroup'),
+  title: value('newTitle'),
+  days: value('newDays'),
+  start: value('newStart'),
+  end: value('newEnd'),
+  room: value('newRoom')
+});
 
 const classTime = c => `${c.dayText}, ${fmtMin(c.start)} – ${fmtMin(c.end)}`;
 
@@ -526,14 +558,28 @@ const classDetailView = () => {
         <p class="sub">${esc(c.schedule)}${teacher ? ` · Join code: <b class="join">${esc(c.joinCode || c.code)}</b> · ${studentsOf(c).length} students · ${pendingOf(c).length} pending` : ''}</p>
       </div>
       ${teacher ? `<div class="end">
+        <button class="btn" data-action="openEditClass">Edit class</button>
+        <button class="btn danger" data-action="deleteClass">Delete class</button>
         <button class="btn" data-action="openRoster" data-id="${c.id}">Upload class list</button>
         <button class="btn primary" data-action="openMaterial">${icon('plus', 18)} Add material</button>
       </div>` : ''}
     </header>
 
-    ${teacher && pendingOf(c).length ? `
-      <div class="group-label">Pending (no account yet)</div>
-      <section class="panel pending">${pendingOf(c).map(e => `<div>${esc(e)}</div>`).join('')}</section>` : ''}
+    ${teacher ? `
+      <div class="group-label">Students</div>
+      <section class="panel">
+        ${studentsOf(c).map(u => `
+          <div class="user-row">
+            <div class="info">${esc(u.name)}<small>${esc(u.email)}</small></div>
+            <button class="btn" data-action="removeStudent" data-id="${u.id}">Remove</button>
+          </div>`).join('')}
+        ${pendingOf(c).map(e => `
+          <div class="user-row">
+            <div class="info">${esc(e)}<small>Pending · no account yet</small></div>
+            <button class="btn" data-action="removeInvite" data-id="${esc(e)}">Remove</button>
+          </div>`).join('')}
+        ${studentsOf(c).length || pendingOf(c).length ? '' : '<p class="empty">No students yet. Upload a class list to add them.</p>'}
+      </section>` : ''}
 
     <div class="group-label">Study materials</div>
     <section class="panel">
@@ -549,7 +595,8 @@ const classDetailView = () => {
               ${safeLink(m.link) ? `<a class="chip" href="${esc(m.link)}" target="_blank" rel="noopener">${icon('link', 16)}Open link</a>` : ''}
             </div>
           </div>
-          ${teacher ? `<button class="btn danger" data-action="deleteMaterial" data-id="${m.id}">Delete</button>` : ''}
+          ${teacher ? `<button class="btn" data-action="openEditMaterial" data-id="${m.id}">Edit</button>
+          <button class="btn danger" data-action="deleteMaterial" data-id="${m.id}">Delete</button>` : ''}
         </div>`).join('') : `<p class="empty">${teacher ? 'No materials yet. Click Add material to upload one.' : 'Your professor hasn’t posted any materials yet.'}</p>`}
     </section>`;
 };
@@ -852,17 +899,48 @@ const studyLoadModal = () => modal(
     : '<button class="btn primary" data-action="previewLoad">Preview</button>')
 );
 
-const newClassModal = () => modal(
-  'New class',
-  `${field('newCode', 'Course code', { placeholder: 'e.g. IT 3105N', max: 30 })}
-   ${field('newGroup', 'Group #', { placeholder: 'e.g. 3', max: 5 })}
-   ${field('newTitle', 'Course title (optional)', { placeholder: 'e.g. App Dev and Emerging Tech' })}
-   ${field('newDays', 'Days', { placeholder: 'e.g. M W or T Th or Sat', max: 30 })}
-   ${field('newStart', 'Start time', { type: 'time' })}
-   ${field('newEnd', 'End time', { type: 'time' })}
-   ${field('newRoom', 'Room', { placeholder: 'e.g. LB445TC', max: 30 })}`,
-  CANCEL + '<button class="btn primary" data-action="saveNewClass">Create class</button>'
-);
+const classFields = d => `
+  ${field('newCode', 'Course code', { value: d.code, placeholder: 'e.g. IT 3105N', max: 30 })}
+  ${field('newGroup', 'Group #', { value: d.group, placeholder: 'e.g. 3', max: 5 })}
+  ${field('newTitle', 'Course title (optional)', { value: d.title, placeholder: 'e.g. App Dev and Emerging Tech' })}
+  ${field('newDays', 'Days', { value: d.days, placeholder: 'e.g. M W or T Th or Sat', max: 30 })}
+  ${field('newStart', 'Start time', { value: d.start, type: 'time' })}
+  ${field('newEnd', 'End time', { value: d.end, type: 'time' })}
+  ${field('newRoom', 'Room', { value: d.room, placeholder: 'e.g. LB445TC', max: 30 })}`;
+
+const newClassModal = () => {
+  const d = state.classDraft;
+
+  if (!d) return modal(
+    'New class',
+    `<label class="field">
+       <span>Class list (.md)</span>
+       <input id="classFile" type="file" accept=".md,.txt">
+     </label>
+     <p class="modal-hint">One file per class. Put the course code, group, schedule and room at the top, then your students' emails. The class is created with the students already in it.</p>
+     <div class="missing">IT 3206N · Group 3<br>M W 12:30 PM - 3:00 PM · LB448TC<br>22100001@usc.edu.ph<br>22100002@usc.edu.ph</div>`,
+    CANCEL
+  );
+
+  return modal(
+    'New class',
+    `<p class="modal-note">Check the details from your file before creating the class.</p>
+     ${classFields(d)}
+     <p class="modal-text"><b>${d.emails.length}</b> students found</p>
+     ${d.emails.length ? `<div class="missing">${d.emails.map(e => `<div>${esc(e)}</div>`).join('')}</div>` : ''}`,
+    CANCEL + '<button class="btn primary" data-action="saveNewClass">Create class</button>'
+  );
+};
+
+const editClassModal = () => {
+  const c = klass(state.selectedClass);
+  const [code, title = ''] = c.name.split(' — ');
+  return modal(
+    'Edit class',
+    classFields({ code, group: c.group, title, days: c.dayText, start: toHHMM(c.start), end: toHHMM(c.end), room: c.room }),
+    CANCEL + '<button class="btn primary" data-action="updateClass">Save</button>'
+  );
+};
 
 const rosterModal = () => {
   const c = klass(state.selectedClass);
@@ -893,21 +971,24 @@ const rosterModal = () => {
   );
 };
 
-const materialModal = () => modal(
-  'Add study material',
-  `${field('matTitle', 'Title', { placeholder: 'e.g. Chapter 3 slides' })}
-   <label class="field">
-     <span>Note (optional)</span>
-     <textarea id="matNote" maxlength="500" placeholder="What should students do with this?"></textarea>
-   </label>
-   <label class="field">
-     <span>File (optional, up to 5 MB)</span>
-     <input id="matFile" type="file">
-   </label>
-   ${field('matLink', 'Link (optional)', { placeholder: 'https://…', max: 500 })}
-   <p class="modal-hint">Add a file, a link, or both.</p>`,
-  CANCEL + '<button class="btn primary" data-action="saveMaterial">Post material</button>'
-);
+const materialModal = () => {
+  const m = db.materials.find(x => x.id == state.editingMaterial) || {};
+  return modal(
+    m.id ? 'Edit study material' : 'Add study material',
+    `${field('matTitle', 'Title', { value: m.title, placeholder: 'e.g. Chapter 3 slides' })}
+     <label class="field">
+       <span>Note (optional)</span>
+       <textarea id="matNote" maxlength="500" placeholder="What should students do with this?">${esc(m.note || '')}</textarea>
+     </label>
+     <label class="field">
+       <span>${m.hasFile ? `Replace file (now: ${esc(m.fileName)})` : 'File (optional, up to 5 MB)'}</span>
+       <input id="matFile" type="file">
+     </label>
+     ${field('matLink', 'Link (optional)', { value: m.link, placeholder: 'https://…', max: 500 })}
+     <p class="modal-hint">Add a file, a link, or both.</p>`,
+    CANCEL + `<button class="btn primary" data-action="saveMaterial">${m.id ? 'Save' : 'Post material'}</button>`
+  );
+};
 
 const modalHtml = () => {
   switch (state.modal) {
@@ -968,6 +1049,9 @@ const modalHtml = () => {
 
     case 'roster':
       return rosterModal();
+
+    case 'editClass':
+      return editClassModal();
 
     case 'material':
       return materialModal();
@@ -1288,21 +1372,44 @@ const actions = {
 
   openNewClass() {
     state.modal = 'newClass';
+    state.classDraft = null;
   },
 
   async saveNewClass() {
-    const r = await api('POST', '/classes', {
-      code: value('newCode'),
-      group: value('newGroup'),
-      title: value('newTitle'),
-      days: value('newDays'),
-      start: value('newStart'),
-      end: value('newEnd'),
-      room: value('newRoom')
-    });
+    const d = state.classDraft;
+    const r = await api('POST', '/classes', { ...classForm(), text: d ? d.text : '' });
 
-    state.modal = null;
+    state.classDraft = null;
+    state.selectedClass = r.id;
+    state.rosterResult = r;
+    state.modal = 'roster';
     toast(`Class created. Join code: ${r.joinCode}`);
+  },
+
+  openEditClass() {
+    state.modal = 'editClass';
+  },
+
+  async updateClass() {
+    await api('PUT', `/classes/${state.selectedClass}`, classForm());
+    state.modal = null;
+    toast('Class updated');
+  },
+
+  async deleteClass() {
+    if (!confirm('Delete this class? Students and materials in it will be removed.')) return;
+    await api('DELETE', `/classes/${state.selectedClass}`, {});
+    state.view = 'classes';
+    toast('Class deleted');
+  },
+
+  async removeStudent(id) {
+    if (!confirm('Remove this student from the class?')) return;
+    await api('DELETE', `/classes/${state.selectedClass}/students/${id}`, {});
+  },
+
+  async removeInvite(email) {
+    await api('POST', `/classes/${state.selectedClass}/invites/remove`, { email });
   },
 
   openRoster(id) {
@@ -1322,6 +1429,13 @@ const actions = {
 
   openMaterial() {
     state.modal = 'material';
+    state.editingMaterial = null;
+    state.pendingFile = null;
+  },
+
+  openEditMaterial(id) {
+    state.modal = 'material';
+    state.editingMaterial = +id;
     state.pendingFile = null;
   },
 
@@ -1330,13 +1444,15 @@ const actions = {
     const link = value('matLink').trim();
     const file = state.pendingFile;
 
+    const m = db.materials.find(x => x.id == state.editingMaterial);
+
     required(title);
 
-    if (!file && !link) {
+    if (!file && !link && !(m && m.hasFile)) {
       throw new Invalid('Add a file or a link.');
     }
 
-    await api('POST', '/materials', {
+    await api(m ? 'PUT' : 'POST', m ? `/materials/${m.id}` : '/materials', {
       classId: state.selectedClass,
       title,
       note: value('matNote').trim(),
@@ -1347,7 +1463,7 @@ const actions = {
 
     state.modal = null;
     state.pendingFile = null;
-    toast('Material posted');
+    toast(m ? 'Material updated' : 'Material posted');
   },
 
   async deleteMaterial(id) {
@@ -1393,7 +1509,7 @@ const actions = {
   }
 };
 
-const LOCAL = ['showForgot', 'hideForgot', 'nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'addLoadRow', 'removeLoadRow', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser', 'openSetPassword'];
+const LOCAL = ['openEditClass', 'openEditMaterial', 'showForgot', 'hideForgot', 'nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'addLoadRow', 'removeLoadRow', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser', 'openSetPassword'];
 
 let running = false;
 
@@ -1444,6 +1560,15 @@ document.addEventListener('input', e => {
 
 
 document.addEventListener('change', e => {
+  if (e.target.id === 'classFile') {
+    const file = e.target.files[0];
+    if (file) file.text().then(text => {
+      state.classDraft = parseClassList(text);
+      render();
+    });
+    return;
+  }
+
   if (e.target.id === 'matFile') {
     const file = e.target.files[0];
     state.pendingFile = null;

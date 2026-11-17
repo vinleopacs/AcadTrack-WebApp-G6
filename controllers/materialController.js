@@ -43,6 +43,32 @@ const create = async (req, res) => {
   res.status(201).json({ ok: true });
 };
 
+const update = async (req, res) => {
+  const m = await materials.byId(req.params.id);
+  if (!m) throw notFound('Material not found.');
+  await ownClass(req, m.classId);
+
+  const title = String(req.body.title || '').trim().slice(0, 150);
+  const link = String(req.body.link || '').trim().slice(0, 500);
+  const match = String(req.body.data || '').match(/^data:([^;,]*)(;base64)?,(.*)$/);
+  const data = match ? Buffer.from(match[3], 'base64') : null;
+
+  required(title);
+
+  if (!data && !m.hasFile && !link) throw invalid('Add a file or a link.');
+  if (link && !/^https?:\/\//i.test(link)) throw invalid('Links must start with http:// or https://');
+  if (data && data.length > MAX_BYTES) throw invalid('File is too big. Use a file up to 5 MB or add a link instead.');
+
+  await materials.update(m.id, {
+    title,
+    note: String(req.body.note || '').trim().slice(0, 500),
+    link,
+    file: data && { name: String(req.body.fileName || 'file').slice(0, 255), type: match[1] || 'application/octet-stream', data }
+  });
+
+  res.json({ ok: true });
+};
+
 const remove = async (req, res) => {
   const m = await materials.byId(req.params.id);
   if (!m) throw notFound('Material not found.');
@@ -69,4 +95,4 @@ const download = async (req, res) => {
   res.send(f.file_data);
 };
 
-module.exports = { create, remove, download };
+module.exports = { create, update, remove, download };

@@ -36,7 +36,7 @@ const ownClass = async (req, id) => {
   return c;
 };
 
-const create = async (req, res) => {
+const classInput = async (req, selfId = 0) => {
   const { code: raw, group, title, days: dayInput, start: startInput, end: endInput, room } = req.body;
 
   required(raw, group, dayInput, startInput, endInput);
@@ -52,25 +52,75 @@ const create = async (req, res) => {
   const display = String(raw).trim().toUpperCase();
   const code = display.replace(/\s+/g, '');
   const groupNo = String(group).trim();
-  if (await classes.byCodeGroup(code, groupNo, true)) {
-    throw invalid('That course and group already has a class.');
-  }
+  const taken = await classes.byCodeGroup(code, groupNo, true);
 
-  const fields = {
+  if (taken && taken.id !== selfId) throw invalid('That course and group already has a class.');
+
+  return {
+    code,
+    group: groupNo,
     name: title && String(title).trim() ? `${display} — ${String(title).trim()}` : display,
-    teacherId: req.user.id,
-    joinCode: await newJoinCode(),
     days: parsed.days,
     dayText: parsed.dayText,
     start,
     end,
-    room: String(room || '').trim().toUpperCase(),
-    faculty: req.user.name
+    room: String(room || '').trim().toUpperCase()
   };
+};
 
-  const c = await classes.create({ ...fields, code, group: groupNo });
+const addStudents = async (c, text) => {
+  const emails = [...new Set((String(text || '').match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g) || []).map(e => e.toLowerCase()))];
+  const result = { added: 0, already: 0, missing: [] };
 
-  res.status(201).json({ joinCode: c.joinCode });
+  for (const email of emails) {
+    const u = await users.findByEmail(email);
+
+    if (!u) {
+      await classes.invite(c.id, email);
+      result.missing.push(email);
+    } else if (u.role !== 'Student') {
+      result.missing.push(email);
+    } else if (await classes.isEnrolled(u.id, c.id)) {
+      result.already++;
+    } else {
+      await enrollStudent(u.id, c.id);
+      result.added++;
+    }
+  }
+
+  return result;
+};
+
+const create = async (req, res) => {
+  const fields = await classInput(req);
+  const c = await classes.create({ ...fields, teacherId: req.user.id, joinCode: await newJoinCode(), faculty: req.user.name });
+  const result = await addStudents(c, req.body.text);
+
+  res.status(201).json({ id: c.id, joinCode: c.joinCode, ...result });
+};
+
+const update = async (req, res) => {
+  const c = await ownClass(req, req.params.id);
+  await classes.edit(c.id, await classInput(req, c.id));
+  res.json({ ok: true });
+};
+
+const remove = async (req, res) => {
+  const c = await ownClass(req, req.params.id);
+  await classes.softDelete(c.id);
+  res.json({ ok: true });
+};
+
+const removeStudent = async (req, res) => {
+  const c = await ownClass(req, req.params.id);
+  await classes.unenroll(req.params.studentId, c.id);
+  res.json({ ok: true });
+};
+
+const removeInvite = async (req, res) => {
+  const c = await ownClass(req, req.params.id);
+  await classes.uninvite(c.id, String(req.body.email || '').toLowerCase());
+  res.json({ ok: true });
 };
 
 const join = async (req, res) => {
@@ -89,27 +139,9 @@ const join = async (req, res) => {
 
 const roster = async (req, res) => {
   const c = await ownClass(req, req.params.id);
-  const emails = [...new Set((String(req.body.text || '').match(/[\w.+-]+@[\w-]+(\.[\w-]+)+/g) || []).map(e => e.toLowerCase()))];
+  const result = await addStudents(c, req.body.text);
 
-  if (!emails.length) throw invalid('No emails found. Each student needs an email in the list.');
-
-  const result = { added: 0, already: 0, missing: [] };
-
-  for (const email of emails) {
-    const u = await users.findByEmail(email);
-
-    if (!u) {
-      await classes.invite(c.id, email);
-      result.missing.push(email);
-    } else if (u.role !== 'Student') {
-      result.missing.push(email);
-    } else if (await classes.isEnrolled(u.id, c.id)) {
-      result.already++;
-    } else {
-      await enrollStudent(u.id, c.id);
-      result.added++;
-    }
-  }
+  if (!result.added && !result.already && !result.missing.length) throw invalid('No emails found. Each student needs an email in the list.');
 
   res.json(result);
 };
@@ -179,4 +211,4 @@ const claimInvites = async user => {
   await classes.clearInvites(user.email);
 };
 
-module.exports = { create, join, roster, claimInvites, studyLoad, demoTimes, enrollStudent, ownClass };
+module.exports = { create, update, remove, removeStudent, removeInvite, join, roster, claimInvites, studyLoad, demoTimes, enrollStudent, ownClass };

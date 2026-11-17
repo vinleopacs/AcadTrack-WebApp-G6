@@ -1910,3 +1910,50 @@ main {
 .ccard.waiting .ccard-foot > span {
   white-space: normal;
 }
+
+.people {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--line);
+}
+
+.person small {
+  margin-left: auto;
+  padding: 2px 10px;
+  border-radius: 99px;
+  background: var(--tone-bg, var(--accent-soft));
+  color: var(--tone, var(--accent-text));
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.person .avatar {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #efeff1;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.person:first-child .avatar {
+  background: var(--tone-bg, var(--accent-soft));
+  color: var(--tone, var(--accent-text));
+}
+
+.people-count {
+  padding: 8px 32px 0;
+  color: var(--faint);
+  font-size: 14px;
+}

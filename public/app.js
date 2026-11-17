@@ -638,14 +638,14 @@ const classDetailView = () => {
       <small>${esc(c.schedule)}${teacher ? ` · ${studentsOf(c).length} student${studentsOf(c).length === 1 ? '' : 's'}${pendingOf(c).length ? ` · ${pendingOf(c).length} pending` : ''}` : user(c.teacherId) ? ` · ${esc(displayName(user(c.teacherId)))}` : ''}</small>
     </section>
 
-    <header class="page-head">
-      ${teacher ? `<div class="end">
+    ${teacher ? `<header class="page-head">
+      <div class="end">
         <button class="btn" data-action="openEditClass">Edit class</button>
         <button class="btn danger" data-action="deleteClass">Delete class</button>
         <button class="btn" data-action="openRoster" data-id="${c.id}">Upload class list</button>
         <button class="btn primary" data-action="openMaterial">${icon('plus', 18)} Add material</button>
-      </div>` : ''}
-    </header>
+      </div>
+    </header>` : ''}
 
     ${teacher && requestsOf(c).length ? `
       <div class="group-label">Join requests</div>
@@ -657,6 +657,15 @@ const classDetailView = () => {
             <button class="btn primary" data-action="approveRequest" data-id="${u.id}">Approve</button>
           </div>`).join('')}
       </section>` : ''}
+
+    ${teacher ? '' : `
+      <div class="group-label">People</div>
+      <section class="panel people">
+        ${user(c.teacherId) ? `<div class="person"><span class="avatar">${esc(initials(user(c.teacherId).name))}</span>${esc(displayName(user(c.teacherId)))}<small>Professor</small></div>` : ''}
+        ${studentsOf(c).sort((x, y) => x.name.localeCompare(y.name)).map(u => `
+          <div class="person"><span class="avatar">${esc(initials(u.name))}</span>${esc(u.name)}${u.id == state.user.id ? '<small>You</small>' : ''}</div>`).join('')}
+      </section>
+      <p class="people-count">${studentsOf(c).length} student${studentsOf(c).length === 1 ? '' : 's'}</p>`}
 
     ${teacher ? `
       <div class="group-label">Students</div>

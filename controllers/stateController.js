@@ -27,7 +27,10 @@ const getState = async (req, res) => {
     const ids = list.map(c => c.id);
 
     db.classes = list.map(classes.forClient);
-    db.enrollments = me.role === 'Teacher' ? await classes.enrollments(ids) : ids.map(id => [me.id, id]);
+    const profIds = list.filter(c => c.teacherId).map(c => c.id);
+    db.enrollments = me.role === 'Teacher'
+      ? await classes.enrollments(ids)
+      : [...ids.filter(id => !profIds.includes(id)).map(id => [me.id, id]), ...await classes.enrollments(profIds)];
     db.invites = me.role === 'Teacher' ? await classes.pending(ids) : [];
     db.requests = me.role === 'Teacher' ? await classes.requests(ids) : [];
     db.requested = me.role === 'Student' ? (await classes.requestedBy(me.id)).map(classes.forClient) : [];
@@ -39,7 +42,11 @@ const getState = async (req, res) => {
     const people = new Set([me.id, ...list.map(c => c.teacherId).filter(Boolean), ...db.assignments.map(a => a.teacherId)]);
     if (me.role === 'Teacher') db.enrollments.concat(db.requests.map(r => [r[1]])).forEach(e => people.add(e[0]));
     db.requested.forEach(c => c.teacherId && people.add(c.teacherId));
-    db.users = (await users.findByIds([...people])).map(users.publicUser);
+    const classmates = me.role === 'Student' ? db.enrollments.map(e => e[0]).filter(id => !people.has(id)) : [];
+    db.users = [
+      ...(await users.findByIds([...people])).map(users.publicUser),
+      ...(await users.findByIds([...new Set(classmates)])).map(u => ({ id: u.id, name: u.name, role: u.role }))
+    ];
   }
 
   db.notifications = await notifications.forUser(me.id);

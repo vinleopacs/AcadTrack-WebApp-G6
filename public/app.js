@@ -113,6 +113,27 @@ const TIME = '(\\d{1,2})(?:[:.](\\d{2}))?\\s*(?:([AP])\\.?\\s*M\\.?)?';
 const RANGE = new RegExp(`${TIME}\\s*[-–—~]+\\s*${TIME}`, 'i');
 const SCHED = new RegExp(`\\b(${DAY}(?:\\s*${DAY})*)\\s*,?\\s*${TIME}\\s*[-–—~]+\\s*${TIME}`, 'g');
 const CODE = /(?:(\d{1,3})[^A-Z\d]{0,6})?([A-Z]{2,}(?:-[A-Z]+)?\s+(?:[A-Z]+-)?[A-Z\d]*\d?[A-Z\d]*-?)\s*$/;
+const KNOWN = new RegExp(`(?:(\\d{1,3})[^A-Z\\d]{0,6})?(${Object.keys(COURSES).map(c => c.replace(/\s+/g, '\\s*')).join('|')})\\s*$`);
+const COURSE_KEYS = Object.keys(COURSES).map(c => [c.replace(/\s+/g, ''), c]);
+
+const dist = (a, b) => {
+  let prev = [...Array(b.length + 1).keys()];
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] !== b[j - 1]));
+    prev = row;
+  }
+  return prev[b.length];
+};
+
+const matchCourse = code => {
+  const k = code.toUpperCase().replace(/\s+/g, '').replace(/(\d)O|O(\d)/g, '$10$2');
+  const exact = COURSE_KEYS.find(([c]) => c === k);
+  if (exact) return exact[1];
+  const near = COURSE_KEYS.filter(([c]) => dist(c, k) === 1);
+  return near.length === 1 ? near[0][1] : code.trim();
+};
+
 const ROOM = /\b[A-Z]{1,4}\d{1,4}[A-Z]{0,4}\b/;
 
 const fixOcr = text => text
@@ -138,7 +159,8 @@ const syncLoad = () => document.querySelectorAll('[data-row]').forEach(el => (st
 const parseStudyLoad = raw => {
   const text = fixOcr(raw);
   const found = [...text.matchAll(SCHED)].map(m => {
-    const code = text.slice(0, m.index).match(CODE);
+    const before = text.slice(0, m.index);
+    const code = before.match(KNOWN) || before.match(CODE);
     return { m, code, head: code ? m.index - code[0].length + (code[0].length - code[0].trimStart().length) : m.index };
   });
 
@@ -156,7 +178,7 @@ const parseStudyLoad = raw => {
     const days = m[1].match(/Sat|Su|Th|M|T|W|F/g);
     return {
       group: code[1] || '',
-      code: name,
+      code: matchCourse(name),
       dayText: days.join(' '),
       days: days.map(d => DAYS[d]),
       ...range,
@@ -783,7 +805,7 @@ const attendanceModal = () => {
 };
 
 const loadInput = (i, key, label, placeholder) =>
-  `<input data-row="${i}" data-key="${key}" value="${esc(state.loadRows[i][key])}" placeholder="${placeholder}" aria-label="${label}">`;
+  `<input data-row="${i}" data-key="${key}" value="${esc(state.loadRows[i][key])}" placeholder="${placeholder}" aria-label="${label}"${key === 'code' ? ' list="courseList"' : ''}>`;
 
 const studyLoadModal = () => modal(
   'Upload study load',
@@ -798,6 +820,7 @@ const studyLoadModal = () => modal(
            ${loadInput(i, 'faculty', 'Faculty', 'Faculty')}
            <button class="btn ghost" data-action="removeLoadRow" data-id="${i}">Remove</button>
          </div>`).join('')}
+       <datalist id="courseList">${Object.keys(COURSES).map(c => `<option value="${c}">`).join('')}</datalist>
        <button class="btn" data-action="addLoadRow">Add subject</button>
        <p class="modal-hint">Check each subject and fix anything wrong before saving.</p>`
     : `<label class="field">
@@ -1197,7 +1220,7 @@ const actions = {
       if (!days) throw new Invalid(`Days for ${name} must be like M W, T Th or Sat.`);
       if (!range) throw new Invalid(`Time for ${name} must be like 12:30 PM - 3:00 PM.`);
 
-      return { ...r, days: days.map(d => DAYS[d]), dayText: days.join(' '), ...range };
+      return { ...r, code: matchCourse(r.code), days: days.map(d => DAYS[d]), dayText: days.join(' '), ...range };
     });
 
     if (!rows.length) throw new Invalid('Add at least one subject.');

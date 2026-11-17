@@ -18,7 +18,8 @@ const map = r => {
     start: r.start_min,
     end: r.end_min,
     room: r.room,
-    isDemo: r.is_demo
+    isDemo: r.is_demo,
+    color: r.color
   };
   c.schedule = c.days ? `${c.dayText}, ${fmtMin(c.start)} – ${fmtMin(c.end)}${c.room ? ' · ' + c.room : ''}` : '';
   return c;
@@ -48,10 +49,10 @@ const demo = async () => map(await one('SELECT * FROM MST_CLASS WHERE IS_DEMO = 
 const joinCodeTaken = async code => !!(await one('SELECT 1 FROM MST_CLASS WHERE JOIN_CODE = $1', [code]));
 
 const create = async c => map(await one(`
-  INSERT INTO MST_CLASS (CODE, GROUP_NO, NAME, TEACHER_ID, FACULTY, JOIN_CODE, DAYS, DAY_TEXT, START_MIN, END_MIN, ROOM, IS_DEMO)
-  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+  INSERT INTO MST_CLASS (CODE, GROUP_NO, NAME, TEACHER_ID, FACULTY, JOIN_CODE, DAYS, DAY_TEXT, START_MIN, END_MIN, ROOM, IS_DEMO, COLOR)
+  VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
   [c.code, c.group || '', c.name, c.teacherId || null, c.faculty || '', c.joinCode || null,
-    c.days ? c.days.join(',') : '', c.dayText || '', c.start ?? null, c.end ?? null, c.room || '', c.isDemo || 0]));
+    c.days ? c.days.join(',') : '', c.dayText || '', c.start ?? null, c.end ?? null, c.room || '', c.isDemo || 0, c.color ?? null]));
 
 const update = async (id, c) => map(await one(`
   UPDATE MST_CLASS SET NAME = $2, TEACHER_ID = $3, JOIN_CODE = $4, DAYS = $5, DAY_TEXT = $6,
@@ -62,8 +63,8 @@ const update = async (id, c) => map(await one(`
 
 const edit = (id, c) => query(`
   UPDATE MST_CLASS SET CODE = $2, GROUP_NO = $3, NAME = $4, DAYS = $5, DAY_TEXT = $6,
-  START_MIN = $7, END_MIN = $8, ROOM = $9, UPDATE_DATE = now() WHERE CLASS_ID = $1`,
-  [id, c.code, c.group, c.name, c.days.join(','), c.dayText, c.start, c.end, c.room]);
+  START_MIN = $7, END_MIN = $8, ROOM = $9, COLOR = $10, UPDATE_DATE = now() WHERE CLASS_ID = $1`,
+  [id, c.code, c.group, c.name, c.days.join(','), c.dayText, c.start, c.end, c.room, c.color]);
 
 const softDelete = id =>
   query('UPDATE MST_CLASS SET DEL_FLG = 1, DELETE_DATE = now() WHERE CLASS_ID = $1', [id]);

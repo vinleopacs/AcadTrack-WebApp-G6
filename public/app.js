@@ -233,7 +233,8 @@ const classForm = () => ({
   days: value('newDays'),
   start: value('newStart'),
   end: value('newEnd'),
-  room: value('newRoom')
+  room: value('newRoom'),
+  color: (document.querySelector('[name=classColor]:checked') || {}).value
 });
 
 const classTime = c => `${c.dayText}, ${fmtMin(c.start)} – ${fmtMin(c.end)}`;
@@ -532,10 +533,8 @@ const studentsOf = c => db.enrollments.filter(e => e[1] == c.id).map(e => user(e
 
 const TONES = [['#5b4785', '#ece6f7'], ['#1f7a73', '#dcf1ee'], ['#9a6209', '#fdf0dd'], ['#a33a5a', '#fbe6ec'], ['#2f5f9e', '#e2ecf8'], ['#5c7a1f', '#ecf3dc'], ['#b0482a', '#fbe8e1'], ['#3d4f6b', '#e5e9f0']];
 const hash = c => [...c.code + c.group].reduce((h, ch) => h * 31 + ch.charCodeAt(0) >>> 0, 7);
-const tone = c => {
-  const i = myClasses().map(x => x.id).sort((a, b) => a - b).indexOf(c.id);
-  return TONES[(i < 0 ? hash(c) : i) % TONES.length];
-};
+const tone = c => TONES[(c.color ?? hash(c)) % TONES.length];
+const freeColor = () => [0, 1, 2, 3, 4, 5, 6, 7].find(i => !myClasses().some(c => c.color === i)) ?? 0;
 const toneStyle = c => `--tone:${tone(c)[0]};--tone-bg:${tone(c)[1]}`;
 const SUBJECT_ICONS = { IT: 'monitor', CIS: 'code', CS: 'code', IS: 'chart', GE: 'globe', TPE: 'run', NSTP: 'flag', EDM: 'heart' };
 const subjectIcon = c => SUBJECT_ICONS[c.code.match(/^[A-Z]+/)[0]] || 'book';
@@ -1074,7 +1073,15 @@ const classFields = d => `
   ${field('newDays', 'Days', { value: d.days, placeholder: 'e.g. M W or T Th or Sat', max: 30 })}
   ${field('newStart', 'Start time', { value: d.start, type: 'time' })}
   ${field('newEnd', 'End time', { value: d.end, type: 'time' })}
-  ${field('newRoom', 'Room', { value: d.room, placeholder: 'e.g. LB445TC', max: 30 })}`;
+  ${field('newRoom', 'Room', { value: d.room, placeholder: 'e.g. LB445TC', max: 30 })}
+  <fieldset class="swatches">
+    <legend>Color</legend>
+    ${TONES.map(([fg, bg], i) => `
+      <label style="--tone:${fg};--tone-bg:${bg}">
+        <input type="radio" name="classColor" value="${i}"${i === (d.color ?? freeColor()) ? ' checked' : ''}>
+        <span aria-label="Color ${i + 1}"></span>
+      </label>`).join('')}
+  </fieldset>`;
 
 const newClassModal = () => {
   const d = state.classDraft;
@@ -1105,7 +1112,7 @@ const editClassModal = () => {
   const [code, title = ''] = c.name.split(' — ');
   return modal(
     'Edit class',
-    classFields({ code, group: c.group, title, days: c.dayText, start: toHHMM(c.start), end: toHHMM(c.end), room: c.room }),
+    classFields({ code, group: c.group, title, days: c.dayText, start: toHHMM(c.start), end: toHHMM(c.end), room: c.room, color: c.color }),
     CANCEL + '<button class="btn primary" data-action="updateClass">Save</button>'
   );
 };

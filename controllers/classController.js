@@ -78,7 +78,8 @@ const classInput = async (req, selfId = 0) => {
     dayText: parsed.dayText,
     start,
     end,
-    room: String(room || '').trim().toUpperCase()
+    room: String(room || '').trim().toUpperCase(),
+    color: Number.isInteger(+req.body.color) && +req.body.color >= 0 && +req.body.color < 8 ? +req.body.color : null
   };
 };
 
@@ -107,6 +108,10 @@ const addStudents = async (c, text) => {
 
 const create = async (req, res) => {
   const fields = await classInput(req);
+  if (fields.color === null) {
+    const used = (await classes.forTeacher(req.user.id)).map(x => x.color);
+    fields.color = [0, 1, 2, 3, 4, 5, 6, 7].find(i => !used.includes(i)) ?? used.length % 8;
+  }
   const c = await classes.create({ ...fields, teacherId: req.user.id, joinCode: await newJoinCode(), faculty: req.user.name });
   const result = await addStudents(c, req.body.text);
 

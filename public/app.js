@@ -551,7 +551,6 @@ const classesView = () => state.user.role === 'Teacher' ? teacherClassesView() :
       <p class="sub">Classes you’re enrolled in this term.</p>
     </div>
     <div class="end">
-      <button class="btn ghost" data-action="openLoad">${icon('file', 18)} Upload study load</button>
       <button class="btn ghost" data-action="openAddClass">${icon('plus', 18)} Add class</button>
     </div>
   </header>
@@ -626,6 +625,9 @@ const attendanceView = () => {
       <div>
         <h1>Attendance</h1>
         <p class="sub">Sign in once your class starts. You can sign until 11:59 PM that day.</p>
+      </div>
+      <div class="end">
+        <button class="btn ghost" data-action="openLoad">${icon('file', 18)} Upload study load</button>
       </div>
     </header>
 

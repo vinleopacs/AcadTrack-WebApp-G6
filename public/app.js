@@ -47,6 +47,13 @@ const ICONS = {
   home: '<path d="M4 11l8-7 8 7"/><path d="M6 10v10h12V10"/><path d="M10 20v-5h4v5"/>',
   copy: '<rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5h10"/>',
   upload: '<path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 20h14"/>',
+  monitor: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+  code: '<path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 6l-3 12"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.5 3 14.5 0 18M12 3c-3 3.5-3 14.5 0 18"/>',
+  run: '<circle cx="14" cy="4.5" r="1.8"/><path d="m6 21 4-6 3 2 1-5 4 3M9 12l3-4 3 1"/>',
+  flag: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
+  heart: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>'
 };
 
@@ -523,9 +530,16 @@ const pendingOf = c => db.invites.filter(i => i[0] == c.id).map(i => i[1]);
 
 const studentsOf = c => db.enrollments.filter(e => e[1] == c.id).map(e => user(e[0])).filter(Boolean);
 
-const TONES = [['#5b4785', '#ece6f7'], ['#1f7a73', '#dcf1ee'], ['#9a6209', '#fdf0dd'], ['#a33a5a', '#fbe6ec'], ['#2f5f9e', '#e2ecf8'], ['#5c7a1f', '#ecf3dc']];
-const tone = c => TONES[[...c.code].reduce((h, ch) => h + ch.charCodeAt(0), 0) % TONES.length];
+const TONES = [['#5b4785', '#ece6f7'], ['#1f7a73', '#dcf1ee'], ['#9a6209', '#fdf0dd'], ['#a33a5a', '#fbe6ec'], ['#2f5f9e', '#e2ecf8'], ['#5c7a1f', '#ecf3dc'], ['#b0482a', '#fbe8e1'], ['#3d4f6b', '#e5e9f0']];
+const hash = c => [...c.code + c.group].reduce((h, ch) => h * 31 + ch.charCodeAt(0) >>> 0, 7);
+const tone = c => {
+  const i = myClasses().map(x => x.id).sort((a, b) => a - b).indexOf(c.id);
+  return TONES[(i < 0 ? hash(c) : i) % TONES.length];
+};
 const toneStyle = c => `--tone:${tone(c)[0]};--tone-bg:${tone(c)[1]}`;
+const SUBJECT_ICONS = { IT: 'monitor', CIS: 'code', CS: 'code', IS: 'chart', GE: 'globe', TPE: 'run', NSTP: 'flag', EDM: 'heart' };
+const subjectIcon = c => SUBJECT_ICONS[c.code.match(/^[A-Z]+/)[0]] || 'book';
+const pattern = c => `p${hash(c) % 4}`;
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const nextClass = c => {
@@ -552,7 +566,8 @@ const classCard = c => {
   return `
     <article class="ccard" style="${toneStyle(c)}">
       <button class="ccard-main" data-action="openClassDetail" data-id="${c.id}">
-        <span class="ccard-banner">
+        <span class="ccard-banner ${pattern(c)}">
+          <span class="subject" aria-hidden="true">${icon(subjectIcon(c), 26)}</span>
           <span class="tags">${c.group ? `<em>Group ${esc(c.group)}</em>` : ''}${fresh ? `<em class="fresh">${fresh} new</em>` : ''}</span>
           <b>${esc(code)}</b>
           ${title ? `<span>${esc(title)}</span>` : ''}
@@ -566,7 +581,7 @@ const classCard = c => {
       <footer class="ccard-foot">
         ${teacher ? `
           <button class="code-chip" data-action="copyCode" data-id="${esc(c.joinCode)}" aria-label="Copy join code ${esc(c.joinCode)}">${esc(c.joinCode)}${icon('copy', 15)}</button>
-          <span>${icon('user', 16)}${studentsOf(c).length}${pendingOf(c).length ? ` +${pendingOf(c).length} pending` : ''}</span>
+          <span title="${studentsOf(c).length} students, ${pendingOf(c).length} pending">${icon('user', 16)}${studentsOf(c).length}${pendingOf(c).length ? ` (+${pendingOf(c).length})` : ''}</span>
           <button class="icon-btn" data-action="openRoster" data-id="${c.id}" aria-label="Upload class list" title="Upload class list">${icon('upload', 18)}</button>`
         : `<span>${icon('file', 16)}${mats.length} material${mats.length === 1 ? '' : 's'}</span>`}
       </footer>
@@ -603,7 +618,8 @@ const classDetailView = () => {
   return `
     <button class="back" data-action="nav" data-id="classes">${icon('back', 18)} Back to classes</button>
 
-    <section class="class-banner" style="${toneStyle(c)}">
+    <section class="class-banner ${pattern(c)}" style="${toneStyle(c)}">
+      <span class="subject" aria-hidden="true">${icon(subjectIcon(c), 30)}</span>
       <span class="tags">${c.group ? `<em>Group ${esc(c.group)}</em>` : ''}${teacher ? `<button class="code-chip" data-action="copyCode" data-id="${esc(c.joinCode)}" aria-label="Copy join code ${esc(c.joinCode)}">${esc(c.joinCode)}${icon('copy', 15)}</button>` : ''}</span>
       <h1>${esc(c.name.split(' — ')[0])}</h1>
       ${c.name.split(' — ')[1] ? `<p>${esc(c.name.split(' — ')[1])}</p>` : ''}

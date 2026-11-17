@@ -209,32 +209,31 @@ const NAV = {
   ]
 };
 
+const googleBlock = () => (config.googleClientId ? '<div class="auth-or"><span>or</span></div><div id="googleBtn" class="google-btn"></div>' : '');
+
+const authBody = () => state.forgot ? `
+    <h1 class="auth-title">Forgot password</h1>
+    <p class="auth-sub">Students and professors don't have an AcadTrack password. Sign in with your @${esc(config.domain)} Google account instead.</p>
+    <p class="auth-sub">Forgot your school Google password? Use "Forgot password?" on the Google sign-in screen or ask the school IT office.</p>
+    <p class="auth-sub">Admin: change ADMIN_PASSWORD in the server settings and restart the app. The new password works right away.</p>
+    <button class="btn primary block" data-action="hideForgot">Back to sign in</button>` : `
+    <h1 class="auth-title">Sign in</h1>
+    <p class="auth-sub">Welcome back. Use your school email.</p>
+    ${field('email', 'Email', { type: 'email', placeholder: '22100001@' + config.domain })}
+    ${field('password', 'Password', { type: 'password', placeholder: '••••••••', max: 255 })}
+    <div class="auth-row">
+      <label class="remember"><input id="remember" type="checkbox"> Remember me</label>
+      <button class="link-btn" data-action="showForgot">Forgot password?</button>
+    </div>
+    <button class="btn primary block" data-action="login">Sign in</button>
+    ${googleBlock()}
+    <p class="auth-switch">Students and professors: no password needed, just sign in with your @${esc(config.domain)} Google account.</p>`;
+
 const loginView = () => `
   <div class="login">
     <div class="login-card">
       <div class="login-brand">${logo()}</div>
-
-      <p class="demo-title">Students and professors: sign in with your @${esc(config.domain)} Google account.</p>
-      <div id="googleBtn" class="google-btn">${config.googleClientId ? '' : '<p class="modal-hint">Google sign-in is not set up yet.</p>'}</div>
-
-      <hr>
-
-      <details class="admin-login">
-        <summary>Admin login</summary>
-
-        ${field('email', 'Email', { type: 'email', placeholder: 'admin@school.edu' })}
-        ${field('password', 'Password', { type: 'password', placeholder: '••••••••', max: 255 })}
-
-        <label class="remember">
-          <input id="showPw" type="checkbox"> Show password
-        </label>
-
-        <label class="remember">
-          <input id="remember" type="checkbox"> Remember me
-        </label>
-
-        <button class="btn primary block" data-action="login">Log in</button>
-      </details>
+      ${authBody()}
     </div>
   </div>`;
 
@@ -1028,6 +1027,14 @@ const actions = {
     await api('POST', '/login', { email, password, remember: document.getElementById('remember').checked });
   },
 
+  showForgot() {
+    state.forgot = true;
+  },
+
+  hideForgot() {
+    state.forgot = false;
+  },
+
   async google(credential) {
     await api('POST', '/auth/google', { credential });
   },
@@ -1256,7 +1263,7 @@ const actions = {
   }
 };
 
-const LOCAL = ['nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser'];
+const LOCAL = ['showForgot', 'hideForgot', 'nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser'];
 
 let running = false;
 
@@ -1351,14 +1358,6 @@ document.addEventListener('change', e => {
     return;
   }
 
-  if (e.target.id === 'showPw') {
-    ['password'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.type = e.target.checked ? 'text' : 'password';
-    });
-    return;
-  }
-
   if (e.target.id === 'filter') {
     state.filter = e.target.value;
   } else if (e.target.id === 'order') {
@@ -1371,7 +1370,7 @@ document.addEventListener('change', e => {
 });
 
 document.addEventListener('keydown', e => {
-  if (e.key === 'Enter' && !state.user && document.activeElement && document.activeElement.id === 'password') {
+  if (e.key === 'Enter' && !state.user && e.target.closest('.login-card input')) {
     run('login');
   }
 });

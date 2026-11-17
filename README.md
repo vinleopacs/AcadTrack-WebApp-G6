@@ -60,7 +60,7 @@ The tables are created automatically on the first start.
 | `SESSION_SECRET` | Any long random text; keeps logins secure |
 | `GOOGLE_CLIENT_ID` | OAuth Client ID from Google Cloud |
 | `ALLOWED_DOMAIN` | School email domain allowed to sign in (default `usc.edu.ph`) |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | First admin account, created on first start |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Admin account, created on first start; change `ADMIN_PASSWORD` and restart to reset it |
 | `DEMO_MODE` | `true` adds DEMO 101 for testing attendance |
 | `NODE_ENV` | `production` on the live server |
 

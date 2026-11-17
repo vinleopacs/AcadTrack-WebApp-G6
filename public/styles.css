@@ -1208,14 +1208,58 @@ main {
   margin: 12px 0 4px;
 }
 
-.admin-login summary {
-  cursor: pointer;
-  color: var(--muted);
-  font-size: 14px;
-  text-align: center;
-  margin-bottom: 12px;
+.auth-title {
+  margin: 0 0 4px;
+  font-size: 26px;
 }
 
-.admin-login[open] summary {
-  margin-bottom: 16px;
+.auth-sub {
+  margin: 0 0 24px;
+  color: var(--muted);
+  font-size: 15px;
 }
+
+.auth-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 0 20px;
+}
+
+.auth-row .remember {
+  margin: 0;
+}
+
+.link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.auth-or::before,
+.auth-or::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+
+.auth-switch {
+  margin: 16px 0 0;
+  color: var(--muted);
+  font-size: 15px;
+  text-align: center;
+}
+

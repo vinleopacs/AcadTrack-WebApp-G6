@@ -1431,7 +1431,19 @@ const actions = {
   },
 
   async readNotification(id) {
-    await api('POST', `/notifications/${id}/read`, {});
+    const n = db.notifications.find(x => x.id == id);
+    if (!n.read) await api('POST', `/notifications/${id}/read`, {});
+
+    const c = n.classId && klass(n.classId);
+    if (n.assignmentId && assignment(n.assignmentId)) {
+      state.selected = n.assignmentId;
+      state.view = 'detail';
+    } else if (c && c.teacherId && myClasses().some(x => x.id == c.id)) {
+      state.selectedClass = c.id;
+      state.view = 'classDetail';
+    } else if (c) {
+      state.view = 'attendance';
+    }
   },
 
   openAddClass() {

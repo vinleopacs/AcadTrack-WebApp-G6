@@ -8,10 +8,13 @@ const classes = require('../models/classes');
 const setup = async () => {
   await query(fs.readFileSync(path.join(__dirname, '..', 'db', 'schema.sql'), 'utf8'));
 
-  if (!(await users.countAdmins())) {
-    const email = process.env.ADMIN_EMAIL;
-    const password = process.env.ADMIN_PASSWORD;
+  const email = process.env.ADMIN_EMAIL;
+  const password = process.env.ADMIN_PASSWORD;
+  const admin = email && await users.findByEmail(email);
 
+  if (admin && admin.role === 'Admin' && password) {
+    await users.setPassword(admin.id, await bcrypt.hash(password, 10));
+  } else if (!(await users.countAdmins())) {
     if (!email || !password) {
       console.warn('No admin account yet. Set ADMIN_EMAIL and ADMIN_PASSWORD to create one.');
     } else {

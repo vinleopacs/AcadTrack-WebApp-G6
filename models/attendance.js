@@ -1,9 +1,11 @@
 const { one, many, query } = require('./db');
 
-const map = r => ({ id: r.attendance_id, studentId: r.student_id, classId: r.class_id, date: r.att_date, status: r.status });
+const map = r => ({ id: r.attendance_id, studentId: r.student_id, classId: r.class_id, className: r.class_name, date: r.att_date, status: r.status });
 
 const forStudent = async id =>
-  (await many('SELECT * FROM TBL_ATTENDANCE WHERE STUDENT_ID = $1 AND DEL_FLG = 0 ORDER BY ATT_DATE DESC', [id])).map(map);
+  (await many(`
+    SELECT a.*, c.NAME AS CLASS_NAME FROM TBL_ATTENDANCE a JOIN MST_CLASS c ON c.CLASS_ID = a.CLASS_ID
+    WHERE a.STUDENT_ID = $1 AND a.DEL_FLG = 0 ORDER BY a.ATT_DATE DESC`, [id])).map(map);
 
 const find = async (studentId, classId, date) => {
   const r = await one('SELECT * FROM TBL_ATTENDANCE WHERE STUDENT_ID = $1 AND CLASS_ID = $2 AND ATT_DATE = $3 AND DEL_FLG = 0', [studentId, classId, date]);

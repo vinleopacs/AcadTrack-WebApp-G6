@@ -89,6 +89,17 @@ button {
   color: var(--muted);
 }
 
+.btn.soft {
+  background: var(--accent-soft);
+  border-color: transparent;
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.btn.soft:hover {
+  background: #e0d6f2;
+}
+
 .btn.block {
   width: 100%;
   height: 52px;
@@ -129,6 +140,35 @@ button {
 .field select,
 .toolbar select {
   padding-right: 44px;
+}
+
+.field input[type="file"] {
+  height: auto;
+  padding: 8px;
+  color: var(--muted);
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.field input[type="file"]::file-selector-button {
+  margin-right: 12px;
+  padding: 10px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modal-note {
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent-text);
+  font-size: 14px;
 }
 
 .field textarea {
@@ -1294,3 +1334,8 @@ main {
   text-align: center;
 }
 
+
+.modal .auth-or::before,
+.modal .auth-or::after {
+  border-color: #d6d6dc;
+}

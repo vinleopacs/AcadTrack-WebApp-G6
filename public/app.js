@@ -551,7 +551,7 @@ const classesView = () => state.user.role === 'Teacher' ? teacherClassesView() :
       <p class="sub">Classes you’re enrolled in this term.</p>
     </div>
     <div class="end">
-      <button class="btn ghost" data-action="openAddClass">${icon('plus', 18)} Add class</button>
+      <button class="btn soft" data-action="openAddClass">${icon('plus', 18)} Add class</button>
     </div>
   </header>
 
@@ -627,7 +627,7 @@ const attendanceView = () => {
         <p class="sub">Sign in once your class starts. You can sign until 11:59 PM that day.</p>
       </div>
       <div class="end">
-        <button class="btn ghost" data-action="openLoad">${icon('file', 18)} Upload study load</button>
+        <button class="btn soft" data-action="openLoad">${icon('file', 18)} Upload study load</button>
       </div>
     </header>
 
@@ -825,14 +825,15 @@ const studyLoadModal = () => modal(
        <datalist id="courseList">${Object.keys(COURSES).map(c => `<option value="${c}">`).join('')}</datalist>
        <button class="btn" data-action="addLoadRow">Add subject</button>
        <p class="modal-hint">Check each subject and fix anything wrong before saving.</p>`
-    : `<label class="field">
+    : `<p class="modal-note">This replaces your current classes, assignments and notifications. Your attendance history is kept.</p>
+       <label class="field">
          <span>Study load</span>
          <textarea id="studyLoad" placeholder="Paste your study load here"></textarea>
        </label>
        <p class="modal-hint">Open your study load on the school portal, select the whole table, copy it and paste it here. Works from a phone, tablet or computer.</p>
-       <p class="modal-hint">This replaces your current classes, assignments and notifications. Your attendance history is kept.</p>
+       <div class="auth-or"><span>or</span></div>
        <label class="field">
-         <span>Or upload a screenshot</span>
+         <span>Upload a screenshot</span>
          <input id="loadImage" type="file" accept="image/*">
        </label>`,
   CANCEL + (state.loadRows

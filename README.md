@@ -67,8 +67,9 @@ The tables are created automatically on the first start.
 ## Accounts
 
 - **Admin** logs in with email + password and manages users.
-- **Professors** must be added by the admin (Users → Add user → Teacher) before they sign in with Google.
-- **Students** just sign in with Google; any `@usc.edu.ph` account becomes a Student on first sign-in.
+- **Professors** must be added by the admin (Users → Add user → Teacher) with a password. They can sign in with that email and password, or with Google.
+- **Students** can be added by the admin the same way, or just sign in with Google; any `@usc.edu.ph` account becomes a Student on first sign-in.
+- The admin can set a new password for any professor or student with **Set password** on the Users page.
 
 ## Contributors
 

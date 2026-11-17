@@ -47,6 +47,7 @@ router.get('/materials/:id/file', requireLogin, wrap(materials.download));
 router.post('/notifications/:id/read', requireLogin, wrap(users.readNotification));
 
 router.post('/users', requireRole('Admin'), wrap(users.create));
+router.post('/users/:id/password', requireRole('Admin'), wrap(users.setPassword));
 router.post('/users/:id/toggle', requireRole('Admin'), wrap(users.toggle));
 router.post('/reminders/run', requireRole('Admin'), wrap(users.runReminders));
 

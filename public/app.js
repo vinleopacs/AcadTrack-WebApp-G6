@@ -716,6 +716,7 @@ const usersView = () => `
           <small>${esc(u.email)}</small>
         </div>
         <span class="role">${u.role}</span>
+        ${u.role === 'Admin' ? '' : `<button class="btn" data-action="openSetPassword" data-id="${u.id}">Set password</button>`}
         ${u.id === state.user.id ? '' : `<button class="btn" data-action="toggleUser" data-id="${u.id}">${u.active ? 'Deactivate' : 'Activate'}</button>`}
       </div>`).join('')}
   </section>
@@ -943,9 +944,17 @@ const modalHtml = () => {
              <option>Admin</option>
            </select>
          </label>
-         ${field('newPassword', 'Password (Admin accounts only)', { type: 'password', max: 255 })}
-         <p class="modal-hint">Students and professors sign in with Google, so they don't need a password. Add professors here before they sign in; anyone else with a school account becomes a Student.</p>`,
+         ${field('newPassword', 'Password', { type: 'password', placeholder: 'At least 8 characters', max: 72 })}
+         <p class="modal-hint">They can sign in with this email and password. Anyone with a school Google account can also use Sign in with Google.</p>`,
         CANCEL + '<button class="btn primary" data-action="saveUser">Save</button>'
+      );
+
+    case 'setPassword':
+      return modal(
+        'Set password',
+        `<p class="modal-text">${esc(user(state.selected).name)} · ${esc(user(state.selected).email)}</p>
+         ${field('newPassword', 'New password', { type: 'password', placeholder: 'At least 8 characters', max: 72 })}`,
+        CANCEL + '<button class="btn primary" data-action="savePassword">Save</button>'
       );
 
     case 'attendance':
@@ -1363,6 +1372,17 @@ const actions = {
     toast('User added');
   },
 
+  openSetPassword(id) {
+    state.selected = +id;
+    state.modal = 'setPassword';
+  },
+
+  async savePassword() {
+    await api('POST', `/users/${state.selected}/password`, { password: value('newPassword') });
+    state.modal = null;
+    toast('Password saved');
+  },
+
   async toggleUser(id) {
     await api('POST', `/users/${id}/toggle`, {});
   },
@@ -1373,7 +1393,7 @@ const actions = {
   }
 };
 
-const LOCAL = ['showForgot', 'hideForgot', 'nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'addLoadRow', 'removeLoadRow', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser'];
+const LOCAL = ['showForgot', 'hideForgot', 'nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'addLoadRow', 'removeLoadRow', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser', 'openSetPassword'];
 
 let running = false;
 

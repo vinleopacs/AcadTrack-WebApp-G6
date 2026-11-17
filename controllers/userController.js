@@ -16,11 +16,18 @@ const create = async (req, res) => {
 
   if (!/^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(email)) throw invalid('Enter a valid email.');
   if (!ROLES.includes(role)) throw invalid('Choose a role.');
-  if (role === 'Admin' && password.length < 8) throw invalid('Admin accounts need a password of at least 8 characters.');
+  if (password.length < 8) throw invalid('Password must be at least 8 characters.');
   if (await users.findByEmail(email)) throw invalid('That email is already in use.');
 
-  await users.create({ name, email, role, passwordHash: role === 'Admin' ? await bcrypt.hash(password, 10) : null });
+  await users.create({ name, email, role, passwordHash: await bcrypt.hash(password, 10) });
   res.status(201).json({ ok: true });
+};
+
+const setPassword = async (req, res) => {
+  const password = String(req.body.password || '');
+  if (password.length < 8) throw invalid('Password must be at least 8 characters.');
+  await users.setPassword(req.params.id, await bcrypt.hash(password, 10));
+  res.json({ ok: true });
 };
 
 const toggle = async (req, res) => {
@@ -38,4 +45,4 @@ const runReminders = async (req, res) => {
   res.json({ sent: await deadlineReminders() });
 };
 
-module.exports = { create, toggle, readNotification, runReminders };
+module.exports = { create, setPassword, toggle, readNotification, runReminders };

@@ -9,6 +9,7 @@ const map = r => r && {
   note: r.note,
   link: r.link,
   fileName: r.file_name,
+  fileType: r.file_type,
   hasFile: r.has_file,
   posted: r.posted_date
 };

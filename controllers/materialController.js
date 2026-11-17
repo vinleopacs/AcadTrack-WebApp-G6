@@ -6,6 +6,10 @@ const { today } = require('../utils/time');
 const { ownClass } = require('./classController');
 
 const MAX_BYTES = 5 * 1024 * 1024;
+const INLINE = {
+  pdf: 'application/pdf', png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', webp: 'image/webp',
+  md: 'text/plain; charset=utf-8', txt: 'text/plain; charset=utf-8', csv: 'text/plain; charset=utf-8'
+};
 
 const create = async (req, res) => {
   const c = await ownClass(req, req.body.classId);
@@ -87,11 +91,15 @@ const download = async (req, res) => {
 
   if (!allowed) throw forbidden();
 
+  const name = f.file_name.replace(/[^\w.\- ]/g, '_');
+  const inline = req.query.inline && INLINE[name.split('.').pop().toLowerCase()];
+
   res.set({
-    'Content-Type': f.file_type || 'application/octet-stream',
-    'Content-Disposition': `attachment; filename="${f.file_name.replace(/[^\w.\- ]/g, '_')}"`,
+    'Content-Type': inline || f.file_type || 'application/octet-stream',
+    'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename="${name}"`,
     'X-Content-Type-Options': 'nosniff'
   });
+  if (!inline || !inline.startsWith('application/pdf')) res.set('Content-Security-Policy', 'sandbox');
   res.send(f.file_data);
 };
 

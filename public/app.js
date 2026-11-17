@@ -54,6 +54,7 @@ const ICONS = {
   run: '<circle cx="14" cy="4.5" r="1.8"/><path d="m6 21 4-6 3 2 1-5 4 3M9 12l3-4 3 1"/>',
   flag: '<path d="M5 21V4h11l-2 4 2 4H5"/>',
   heart: '<path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>',
+  download: '<path d="M12 4v12M7 11l5 5 5-5"/><path d="M5 20h14"/>',
   link: '<path d="M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1"/><path d="M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1"/>'
 };
 
@@ -618,6 +619,95 @@ const teacherClassesView = () => `
 
   ${myClasses().length ? `<div class="ccards">${myClasses().map(classCard).join('')}</div>` : emptyClasses('Click New class and upload your class list to get started.')}`;
 
+const ext = name => (name || '').split('.').pop().toLowerCase();
+const fileKind = m => {
+  if (!m.hasFile) return 'link';
+  const e = ext(m.fileName);
+  if (e === 'pdf') return 'pdf';
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(e)) return 'image';
+  if (['md', 'txt', 'csv'].includes(e)) return 'text';
+  if (['ppt', 'pptx', 'key'].includes(e)) return 'slides';
+  if (['doc', 'docx'].includes(e)) return 'doc';
+  if (['xls', 'xlsx'].includes(e)) return 'sheet';
+  return 'file';
+};
+
+const youtubeId = url => (url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/) || [])[1];
+
+const inlineMd = t => esc(t)
+  .replace(/`([^`]+)`/g, '<code>$1</code>')
+  .replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>')
+  .replace(/(^|[^*])\*([^*]+)\*/g, '$1<i>$2</i>')
+  .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+
+const renderMd = text => {
+  const out = [];
+  const lines = text.replace(/\r/g, '').split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (/^```/.test(l)) {
+      const code = [];
+      while (++i < lines.length && !/^```/.test(lines[i])) code.push(lines[i]);
+      out.push(`<pre><code>${esc(code.join('\n'))}</code></pre>`);
+    } else if (/^\|.*\|\s*$/.test(l)) {
+      const rows = [];
+      for (; i < lines.length && /^\|.*\|\s*$/.test(lines[i]); i++) if (!/^\|[\s:-|]+\|\s*$/.test(lines[i])) rows.push(lines[i].slice(1, -1).split('|').map(c => inlineMd(c.trim())));
+      i--;
+      out.push(`<table>${rows.map((r, n) => `<tr>${r.map(c => n ? `<td>${c}</td>` : `<th>${c}</th>`).join('')}</tr>`).join('')}</table>`);
+    } else if (/^\s*([-*]|\d+\.)\s+/.test(l)) {
+      const tag = /^\s*\d+\./.test(l) ? 'ol' : 'ul';
+      const items = [];
+      for (; i < lines.length && /^\s*([-*]|\d+\.)\s+/.test(lines[i]); i++) items.push(`<li>${inlineMd(lines[i].replace(/^\s*([-*]|\d+\.)\s+/, ''))}</li>`);
+      i--;
+      out.push(`<${tag}>${items.join('')}</${tag}>`);
+    } else if (/^#{1,6}\s/.test(l)) {
+      const n = l.match(/^#+/)[0].length;
+      out.push(`<h${n + 1}>${inlineMd(l.replace(/^#+\s*/, ''))}</h${n + 1}>`);
+    } else if (/^>\s?/.test(l)) {
+      out.push(`<blockquote>${inlineMd(l.replace(/^>\s?/, ''))}</blockquote>`);
+    } else if (l.trim()) {
+      out.push(`<p>${inlineMd(l)}</p>`);
+    }
+  }
+  return out.join('');
+};
+
+const viewerModal = () => {
+  const m = db.materials.find(x => x.id == state.viewer);
+  if (!m) return '';
+  const kind = fileKind(m);
+  const src = `/api/materials/${m.id}/file`;
+  const yt = m.link && youtubeId(m.link);
+  const names = { slides: 'PowerPoint', doc: 'Word', sheet: 'Excel', file: 'This file' };
+
+  const preview = !m.hasFile ? (yt
+      ? `<iframe class="viewer-frame video" src="https://www.youtube-nocookie.com/embed/${yt}" title="${esc(m.title)}" allowfullscreen></iframe>`
+      : `<div class="viewer-empty">${icon('link', 30)}<p>This material is a link.</p></div>`)
+    : kind === 'pdf' ? '<div class="viewer-doc viewer-pdf" id="pdfPages"><p class="empty">Loading PDF…</p></div>'
+    : kind === 'image' ? `<img class="viewer-img" src="${src}?inline=1" alt="${esc(m.title)}">`
+    : kind === 'text' ? `<div class="viewer-doc">${ext(m.fileName) === 'md' ? renderMd(state.viewerText || '') : `<pre>${esc(state.viewerText || '')}</pre>`}</div>`
+    : `<div class="viewer-empty"><span class="tile kind-${kind}"><em>${esc(ext(m.fileName).toUpperCase().slice(0, 4))}</em></span><p>${names[kind]} files can’t be previewed in the browser. Download it to open it.</p></div>`;
+
+  return `
+  <div class="overlay">
+    <div class="modal viewer" role="dialog" aria-label="${esc(m.title)}">
+      <div class="modal-head">
+        <div>
+          <h2>${esc(m.title)}</h2>
+          <small>${esc(klass(m.classId).name)} · Posted ${formatDate(m.posted)}</small>
+        </div>
+        <button class="close" data-action="close" aria-label="Close">${icon('close', 18)}</button>
+      </div>
+      ${m.note ? `<p class="viewer-note">${esc(m.note)}</p>` : ''}
+      ${preview}
+      <div class="modal-actions">
+        ${safeLink(m.link) ? `<a class="btn" href="${esc(m.link)}" target="_blank" rel="noopener">${icon('link', 18)} Open link</a>` : ''}
+        ${m.hasFile ? `<a class="btn primary" href="${src}" download="${esc(m.fileName)}">${icon('download', 18)} Download</a>` : ''}
+      </div>
+    </div>
+  </div>`;
+};
+
 const safeLink = url => (/^https?:\/\//i.test(url) ? url : '');
 
 const classDetailView = () => {
@@ -691,16 +781,14 @@ const classDetailView = () => {
     <section class="panel">
       ${items.length ? items.map(m => `
         <div class="material">
-          <span class="tile">${icon('file')}</span>
-          <div class="info">
-            <b>${esc(m.title)}</b>
-            ${m.note ? `<span>${esc(m.note)}</span>` : ''}
-            <small>Posted ${formatDate(m.posted)}</small>
-            <div class="links">
-              ${m.hasFile ? `<a class="chip" href="/api/materials/${m.id}/file" download="${esc(m.fileName)}">${icon('file', 16)}${esc(m.fileName)}</a>` : ''}
-              ${safeLink(m.link) ? `<a class="chip" href="${esc(m.link)}" target="_blank" rel="noopener">${icon('link', 16)}Open link</a>` : ''}
-            </div>
-          </div>
+          <button class="material-open" data-action="openViewer" data-id="${m.id}">
+            <span class="tile kind-${fileKind(m)}">${m.hasFile ? `<em>${esc(ext(m.fileName).toUpperCase().slice(0, 4))}</em>` : icon('link')}</span>
+            <span class="info">
+              <b>${esc(m.title)}</b>
+              ${m.note ? `<span>${esc(m.note)}</span>` : ''}
+              <small>${m.hasFile ? esc(m.fileName) + ' · ' : ''}Posted ${formatDate(m.posted)}</small>
+            </span>
+          </button>
           ${teacher ? `<button class="btn" data-action="openEditMaterial" data-id="${m.id}">Edit</button>
           <button class="btn danger" data-action="deleteMaterial" data-id="${m.id}">Delete</button>` : ''}
         </div>`).join('') : `<p class="empty">${teacher ? 'No materials yet. Click Add material to upload one.' : 'Your professor hasn’t posted any materials yet.'}</p>`}
@@ -1269,6 +1357,9 @@ const modalHtml = () => {
     case 'material':
       return materialModal();
 
+    case 'viewer':
+      return viewerModal();
+
     default:
       return '';
   }
@@ -1289,6 +1380,31 @@ const loadScript = src => new Promise((ok, fail) => {
   s.onerror = fail;
   document.head.append(s);
 });
+
+const PDFJS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/';
+
+const renderPdf = async id => {
+  const box = document.getElementById('pdfPages');
+  try {
+    if (!window.pdfjsLib) await loadScript(PDFJS + 'pdf.min.js');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
+    const pdf = await pdfjsLib.getDocument(`/api/materials/${id}/file?inline=1`).promise;
+    box.innerHTML = '';
+    for (let n = 1; n <= pdf.numPages; n++) {
+      if (state.viewer != id || !document.getElementById('pdfPages')) return;
+      const page = await pdf.getPage(n);
+      const width = page.getViewport({ scale: 1 }).width;
+      const viewport = page.getViewport({ scale: (box.clientWidth / width) * (window.devicePixelRatio || 1) });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      box.append(canvas);
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    }
+  } catch {
+    if (box) box.innerHTML = '<p class="empty">Couldn’t show this PDF here. Use Download to open it.</p>';
+  }
+};
 
 const showGoogleButton = async () => {
   const box = document.getElementById('googleBtn');
@@ -1495,6 +1611,18 @@ const actions = {
   async declineRequest(id) {
     await api('POST', `/classes/${state.selectedClass}/requests/${id}/decline`, {});
     toast('Request declined');
+  },
+
+  async openViewer(id) {
+    const m = db.materials.find(x => x.id == id);
+    state.viewerText = '';
+    if (fileKind(m) === 'text') {
+      const res = await fetch(`/api/materials/${id}/file?inline=1`);
+      state.viewerText = res.ok ? await res.text() : 'Could not load this file.';
+    }
+    state.viewer = +id;
+    state.modal = 'viewer';
+    if (fileKind(m) === 'pdf') setTimeout(() => renderPdf(id));
   },
 
   copyCode(code) {
@@ -1748,7 +1876,7 @@ const actions = {
   }
 };
 
-const LOCAL = ['copyCode', 'openEditClass', 'openEditMaterial', 'showForgot', 'hideForgot', 'nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'addLoadRow', 'removeLoadRow', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser', 'openSetPassword'];
+const LOCAL = ['openViewer', 'copyCode', 'openEditClass', 'openEditMaterial', 'showForgot', 'hideForgot', 'nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'addLoadRow', 'removeLoadRow', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser', 'openSetPassword'];
 
 let running = false;
 

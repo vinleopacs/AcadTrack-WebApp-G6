@@ -941,6 +941,37 @@ main {
   text-align: left;
 }
 
+.load-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  gap: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.load-row input {
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--field);
+  font: inherit;
+  font-size: 15px;
+}
+
+.load-row .btn {
+  grid-column: 1 / -1;
+  justify-self: end;
+  height: 32px;
+  padding: 0 10px;
+  font-size: 14px;
+}
+
+.load-row ~ .btn {
+  margin: 12px 0 20px;
+}
+
 .demo-class {
   margin-top: 12px;
 }

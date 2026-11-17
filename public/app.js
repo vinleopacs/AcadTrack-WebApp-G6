@@ -106,35 +106,65 @@ const myClasses = () =>
 
 const DAYS = { Su: 0, M: 1, T: 2, W: 3, Th: 4, F: 5, Sat: 6 };
 
-const toMin = t => {
-  const [, h, m, ap] = t.match(/(\d+):(\d+)\s*([AP])M/);
-  return (h % 12 + (ap === 'P' ? 12 : 0)) * 60 + +m;
-};
-
 const fmtMin = m => `${(Math.floor(m / 60) + 11) % 12 + 1}:${pad(m % 60)} ${m < 720 ? 'AM' : 'PM'}`;
 
-const fixOcr = text => text.replace(
-  /\b([\dOoIl]{1,2})\s*[:.]\s*([\dOoIl]{2})\s*([AaPp])\.?\s*[Mm]\b/g,
-  (_, h, m, ap) => `${h.replace(/[Oo]/g, '0').replace(/[Il]/g, '1')}:${m.replace(/[Oo]/g, '0').replace(/[Il]/g, '1')} ${ap.toUpperCase()}M`
-);
+const DAY = '(?:Sat|Su|Th|M|T|W|F)';
+const TIME = '(\\d{1,2})(?:[:.](\\d{2}))?\\s*(?:([AP])\\.?\\s*M\\.?)?';
+const RANGE = new RegExp(`${TIME}\\s*[-–—~]+\\s*${TIME}`, 'i');
+const SCHED = new RegExp(`\\b(${DAY}(?:\\s*${DAY})*)\\s*,?\\s*${TIME}\\s*[-–—~]+\\s*${TIME}`, 'g');
+const CODE = /(?:(\d{1,3})[^A-Z\d]{0,6})?([A-Z]{2,}(?:-[A-Z]+)?\s+(?:[A-Z]+-)?[A-Z\d]*\d?[A-Z\d]*-?)\s*$/;
+const ROOM = /\b[A-Z]{1,4}\d{1,4}[A-Z]{0,4}\b/;
 
-const parseStudyLoad = text => fixOcr(text).split('\n').map(line => {
-  const m = line.match(/\b((?:Sat|Su|Th|M|T|W|F)(?:\s*(?:Sat|Su|Th|M|T|W|F))*)\s+(\d{1,2}:\d{2}\s*[AP]M)\s*[-–—]\s*(\d{1,2}:\d{2}\s*[AP]M)\s+(\S+)/);
-  if (!m) return null;
-  const before = line.slice(0, m.index);
-  const code = before.match(/[A-Z]{2,}(?:-[A-Z]+)?\s+(?:[A-Z]+-)?[A-Z\d]+(?=\s*$)/);
-  const group = before.match(/^\s*(\d+)/);
-  return {
-    group: group ? group[1] : '',
-    code: code ? code[0] : before.replace(/^\s*\d+\s+/, '').trim(),
-    dayText: m[1].match(/Sat|Su|Th|M|T|W|F/g).join(' '),
-    days: m[1].match(/Sat|Su|Th|M|T|W|F/g).map(d => DAYS[d]),
-    start: toMin(m[2]),
-    end: toMin(m[3]),
-    room: m[4],
-    faculty: line.slice(m.index + m[0].length).replace(/\s+\d+\.\d+\b.*$/, '').replace(/^\s*TC\b/, '').replace(/[.\s]+$/, '').trim()
-  };
-}).filter(r => r && r.code);
+const fixOcr = text => text
+  .replace(/\b([\dOoIl]{1,2})\s*[:.]\s*([\dOoIl]{2})(?=\s*[AaPp]\.?\s*[Mm]|\s*[-–—])/g, (_, h, m) => `${h}:${m}`.replace(/[Oo]/g, '0').replace(/[Il]/g, '1'))
+  .replace(/\s+/g, ' ');
+
+const toMins = (h, m, ap) => (h % 12 + (/p/i.test(ap) ? 12 : 0)) * 60 + +(m || 0);
+
+const parseRange = text => {
+  const t = String(text).match(RANGE);
+  if (!t) return null;
+  const endAp = t[6] || (t[4] < 7 || t[4] == 12 ? 'P' : 'A');
+  let start = toMins(t[1], t[2], t[3] || endAp);
+  const end = toMins(t[4], t[5], endAp);
+  if (!t[3] && start > end) start -= 720;
+  return start >= 0 && end > start ? { start, end } : null;
+};
+
+const toLoadRow = r => ({ group: r.group, code: r.code, dayText: r.dayText, time: `${fmtMin(r.start)} - ${fmtMin(r.end)}`, room: r.room, faculty: r.faculty });
+
+const syncLoad = () => document.querySelectorAll('[data-row]').forEach(el => (state.loadRows[el.dataset.row][el.dataset.key] = el.value));
+
+const parseStudyLoad = raw => {
+  const text = fixOcr(raw);
+  const found = [...text.matchAll(SCHED)].map(m => {
+    const code = text.slice(0, m.index).match(CODE);
+    return { m, code, head: code ? m.index - code[0].length + (code[0].length - code[0].trimStart().length) : m.index };
+  });
+
+  return found.map(({ m, code }, i) => {
+    const range = parseRange(m[0]);
+    if (!code || !range) return null;
+    let rest = text.slice(m.index + m[0].length, i + 1 < found.length ? found[i + 1].head : text.length).replace(/\bUnits\b.*$/i, '');
+    let name = code[2].trim();
+    const room = rest.match(ROOM);
+    if (room) {
+      const before = rest.slice(0, room.index).trim().split(' ');
+      if (name.endsWith('-') && /^[A-Z\d]+$/.test(before[before.length - 1] || '')) name += before.pop();
+      rest = before.join(' ') + ' ' + rest.slice(room.index + room[0].length).replace(/^\s*TC\b/, '');
+    }
+    const days = m[1].match(/Sat|Su|Th|M|T|W|F/g);
+    return {
+      group: code[1] || '',
+      code: name,
+      dayText: days.join(' '),
+      days: days.map(d => DAYS[d]),
+      ...range,
+      room: room ? room[0] : '',
+      faculty: rest.replace(/\d+\.\d+\s*[A-Z]*|\b[a-z]\b/g, ' ').replace(/[^A-Za-zÑñ,.\s-]/g, ' ').replace(/\s+/g, ' ').replace(/^[\s,.]+|[\s,]+$/g, '').trim()
+    };
+  }).filter(Boolean);
+};
 
 const nowMin = () => new Date().getHours() * 60 + new Date().getMinutes();
 
@@ -752,19 +782,29 @@ const attendanceModal = () => {
   );
 };
 
+const loadInput = (i, key, label, placeholder) =>
+  `<input data-row="${i}" data-key="${key}" value="${esc(state.loadRows[i][key])}" placeholder="${placeholder}" aria-label="${label}">`;
+
 const studyLoadModal = () => modal(
   'Upload study load',
   state.loadRows
-    ? `<table class="load-table">
-         <tr><th>Course</th><th>Schedule</th><th>Room</th><th>Faculty</th></tr>
-         ${state.loadRows.map(r => `<tr><td>${esc(r.code)}</td><td>${esc(r.dayText)} ${fmtMin(r.start)} – ${fmtMin(r.end)}</td><td>${esc(r.room)}</td><td>${esc(r.faculty)}</td></tr>`).join('')}
-       </table>
-       <p class="modal-hint">Check your subjects before saving. Missing one? Cancel and paste the text instead.</p>`
+    ? `${state.loadRows.map((r, i) => `
+         <div class="load-row">
+           ${loadInput(i, 'group', 'Group', 'Group')}
+           ${loadInput(i, 'code', 'Course code', 'Course code')}
+           ${loadInput(i, 'dayText', 'Days', 'M W')}
+           ${loadInput(i, 'time', 'Time', '12:30 PM - 3:00 PM')}
+           ${loadInput(i, 'room', 'Room', 'Room')}
+           ${loadInput(i, 'faculty', 'Faculty', 'Faculty')}
+           <button class="btn ghost" data-action="removeLoadRow" data-id="${i}">Remove</button>
+         </div>`).join('')}
+       <button class="btn" data-action="addLoadRow">Add subject</button>
+       <p class="modal-hint">Check each subject and fix anything wrong before saving.</p>`
     : `<label class="field">
          <span>Study load</span>
          <textarea id="studyLoad" placeholder="Paste your study load here"></textarea>
        </label>
-       <p class="modal-hint">Open your study load on the school portal, select the whole table, copy it and paste it here.</p>
+       <p class="modal-hint">Open your study load on the school portal, select the whole table, copy it and paste it here. Works from a phone, tablet or computer.</p>
        <label class="field">
          <span>Or upload a screenshot</span>
          <input id="loadImage" type="file" accept="image/*">
@@ -940,8 +980,15 @@ const readImage = async file => {
   canvas.height = img.height * scale;
 
   const ctx = canvas.getContext('2d');
-  ctx.filter = 'grayscale(1)';
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  const d = pixels.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const v = d[i + 1] > d[i] + 25 && d[i + 1] > d[i + 2] + 25 ? 255 : (d[i] + d[i + 1] + d[i + 2]) / 3;
+    d[i] = d[i + 1] = d[i + 2] = v;
+  }
+  ctx.putImageData(pixels, 0, 0);
 
   const worker = await Tesseract.createWorker('eng');
   await worker.setParameters({ tessedit_pageseg_mode: Tesseract.PSM.SINGLE_BLOCK });
@@ -1125,17 +1172,43 @@ const actions = {
       throw new Invalid('No subjects found. Copy the whole study load table and paste it again.');
     }
 
-    state.loadRows = rows;
+    state.loadRows = rows.map(toLoadRow);
+  },
+
+  addLoadRow() {
+    syncLoad();
+    state.loadRows.push({ group: '', code: '', dayText: '', time: '', room: '', faculty: '' });
+  },
+
+  removeLoadRow(i) {
+    syncLoad();
+    state.loadRows.splice(i, 1);
   },
 
   async saveLoad() {
-    await api('POST', '/study-load', { rows: state.loadRows });
+    syncLoad();
+
+    const rows = state.loadRows.map(r => {
+      const name = r.code.trim() || 'a subject';
+      const days = r.dayText.match(/Sat|Su|Th|M|T|W|F/g);
+      const range = parseRange(r.time);
+
+      if (!r.code.trim() || !r.group.trim()) throw new Invalid(`Enter the group and course code for ${name}.`);
+      if (!days) throw new Invalid(`Days for ${name} must be like M W, T Th or Sat.`);
+      if (!range) throw new Invalid(`Time for ${name} must be like 12:30 PM - 3:00 PM.`);
+
+      return { ...r, days: days.map(d => DAYS[d]), dayText: days.join(' '), ...range };
+    });
+
+    if (!rows.length) throw new Invalid('Add at least one subject.');
+
+    await api('POST', '/study-load', { rows });
 
     try {
       if (window.Notification && Notification.permission === 'default') Notification.requestPermission();
     } catch {}
 
-    toast(`${state.loadRows.length} classes added from your study load`);
+    toast(`${rows.length} classes added from your study load`);
     state.modal = null;
     state.loadRows = null;
   },
@@ -1263,7 +1336,7 @@ const actions = {
   }
 };
 
-const LOCAL = ['showForgot', 'hideForgot', 'nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser'];
+const LOCAL = ['showForgot', 'hideForgot', 'nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'addLoadRow', 'removeLoadRow', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser'];
 
 let running = false;
 
@@ -1351,7 +1424,7 @@ document.addEventListener('change', e => {
           return toast('No subjects found. Fix the text below or paste it instead.', true);
         }
 
-        state.loadRows = rows;
+        state.loadRows = rows.map(toLoadRow);
         render();
       })
       .catch(() => toast('Could not read the screenshot. Paste the text instead.', true));

@@ -51,6 +51,10 @@ router.put('/materials/:id', requireRole('Teacher'), wrap(materials.update));
 router.delete('/materials/:id', requireRole('Teacher'), wrap(materials.remove));
 router.get('/materials/:id/file', requireLogin, wrap(materials.download));
 
+router.put('/profile', requireLogin, wrap(users.updateLook));
+router.put('/profile/photo', requireLogin, wrap(users.setPhoto));
+router.get('/users/:id/avatar', requireLogin, wrap(users.photo));
+
 router.post('/notifications/:id/read', requireLogin, wrap(users.readNotification));
 
 router.post('/users', requireRole('Admin'), wrap(users.create));

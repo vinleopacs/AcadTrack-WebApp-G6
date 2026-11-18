@@ -1,7 +1,8 @@
 const { one, many, query } = require('./db');
 
 const SELECT = `
-  SELECT u.USER_ID, u.NAME, u.EMAIL, u.PASSWORD_HASH, u.GOOGLE_ID, u.IS_ACTIVE, r.ROLE_NAME
+  SELECT u.USER_ID, u.NAME, u.EMAIL, u.PASSWORD_HASH, u.GOOGLE_ID, u.IS_ACTIVE, r.ROLE_NAME,
+    u.AVATAR IS NOT NULL AS HAS_AVATAR, u.AVATAR_DATE, u.THEME, u.ACCENT
   FROM MST_USERS u JOIN MST_ROLES r ON r.ROLE_ID = u.ROLE_ID
   WHERE u.DEL_FLG = 0`;
 
@@ -12,10 +13,13 @@ const map = r => r && {
   role: r.role_name,
   active: r.is_active,
   passwordHash: r.password_hash,
-  googleId: r.google_id
+  googleId: r.google_id,
+  avatar: r.has_avatar ? `/api/users/${r.user_id}/avatar?v=${new Date(r.avatar_date).getTime()}` : null,
+  theme: r.theme,
+  accent: r.accent
 };
 
-const publicUser = u => u && { id: u.id, name: u.name, email: u.email, role: u.role, active: u.active };
+const publicUser = u => u && { id: u.id, name: u.name, email: u.email, role: u.role, active: u.active, avatar: u.avatar };
 
 const findById = async id => map(await one(`${SELECT} AND u.USER_ID = $1`, [id]));
 
@@ -42,8 +46,16 @@ const setPassword = (id, passwordHash) =>
 const toggle = id =>
   query('UPDATE MST_USERS SET IS_ACTIVE = 1 - IS_ACTIVE, UPDATE_DATE = now() WHERE USER_ID = $1', [id]);
 
+const avatar = async id => (await one('SELECT AVATAR FROM MST_USERS WHERE USER_ID = $1 AND DEL_FLG = 0', [id]))?.avatar;
+
+const setAvatar = (id, photo) =>
+  query('UPDATE MST_USERS SET AVATAR = $2, AVATAR_DATE = now(), UPDATE_DATE = now() WHERE USER_ID = $1', [id, photo]);
+
+const setLook = (id, theme, accent) =>
+  query('UPDATE MST_USERS SET THEME = $2, ACCENT = $3, UPDATE_DATE = now() WHERE USER_ID = $1', [id, theme, accent]);
+
 const countAdmins = async () => +(await one(`
   SELECT COUNT(*) AS n FROM MST_USERS u JOIN MST_ROLES r ON r.ROLE_ID = u.ROLE_ID
   WHERE u.DEL_FLG = 0 AND r.ROLE_NAME = 'Admin'`)).n;
 
-module.exports = { findById, findByEmail, findByGoogleId, findByIds, list, create, linkGoogle, setPassword, toggle, countAdmins, publicUser };
+module.exports = { findById, findByEmail, findByGoogleId, findByIds, list, create, linkGoogle, setPassword, toggle, avatar, setAvatar, setLook, countAdmins, publicUser };

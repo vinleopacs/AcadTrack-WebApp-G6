@@ -45,13 +45,13 @@ const getState = async (req, res) => {
     const classmates = me.role === 'Student' ? db.enrollments.map(e => e[0]).filter(id => !people.has(id)) : [];
     db.users = [
       ...(await users.findByIds([...people])).map(users.publicUser),
-      ...(await users.findByIds([...new Set(classmates)])).map(u => ({ id: u.id, name: u.name, role: u.role }))
+      ...(await users.findByIds([...new Set(classmates)])).map(u => ({ id: u.id, name: u.name, role: u.role, avatar: u.avatar }))
     ];
   }
 
   db.notifications = await notifications.forUser(me.id);
 
-  res.json({ user: users.publicUser(me), db });
+  res.json({ user: { ...users.publicUser(me), theme: me.theme, accent: me.accent }, db });
 };
 
 module.exports = { getState };

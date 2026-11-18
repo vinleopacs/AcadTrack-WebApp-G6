@@ -1,10 +1,12 @@
 const bcrypt = require('bcryptjs');
 const users = require('../models/users');
 const notifications = require('../models/notifications');
-const { invalid, forbidden, required } = require('../utils/errors');
+const { invalid, forbidden, notFound, required } = require('../utils/errors');
 const { deadlineReminders } = require('../utils/reminders');
 
 const ROLES = ['Student', 'Teacher', 'Admin'];
+const THEMES = ['system', 'light', 'dark'];
+const PHOTO = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/=]+)$/;
 
 const create = async (req, res) => {
   const name = String(req.body.name || '').trim().slice(0, 150);
@@ -36,6 +38,27 @@ const toggle = async (req, res) => {
   res.json({ ok: true });
 };
 
+const updateLook = async (req, res) => {
+  const { theme, accent } = req.body;
+  if (!THEMES.includes(theme)) throw invalid('Choose a theme.');
+  if (!Number.isInteger(accent) || accent < 0 || accent > 5) throw invalid('Choose a color.');
+  await users.setLook(req.user.id, theme, accent);
+  res.json({ ok: true });
+};
+
+const setPhoto = async (req, res) => {
+  const photo = req.body.photo ?? null;
+  if (photo !== null && (typeof photo !== 'string' || photo.length > 400000 || !PHOTO.test(photo))) throw invalid('Use a JPG, PNG or WebP photo.');
+  await users.setAvatar(req.user.id, photo);
+  res.json({ ok: true });
+};
+
+const photo = async (req, res) => {
+  const m = String(await users.avatar(req.params.id) || '').match(PHOTO);
+  if (!m) throw notFound('No photo.');
+  res.set('Cache-Control', 'private, max-age=31536000').type(m[1]).send(Buffer.from(m[2], 'base64'));
+};
+
 const readNotification = async (req, res) => {
   await notifications.markRead(req.params.id, req.user.id);
   res.json({ ok: true });
@@ -45,4 +68,4 @@ const runReminders = async (req, res) => {
   res.json({ sent: await deadlineReminders() });
 };
 
-module.exports = { create, setPassword, toggle, readNotification, runReminders };
+module.exports = { create, setPassword, toggle, updateLook, setPhoto, photo, readNotification, runReminders };

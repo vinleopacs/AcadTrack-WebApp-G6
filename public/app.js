@@ -106,6 +106,7 @@ const value = id => document.getElementById(id).value;
 
 const displayName = u => (u.role === 'Teacher' ? 'Prof. ' + u.name : u.name);
 const initials = name => name.split(' ').map(w => w[0]).slice(0, 2).join('');
+const avatar = (u, text, cls = '') => `<span class="avatar ${cls}">${u?.avatar ? `<img src="${esc(u.avatar)}" alt="">` : esc(initials(text ?? u.name))}</span>`;
 const shortCode = c => c.code.replace(/^([A-Z]+)(?=\d)/, '$1 ');
 const unreadCount = () => db.notifications.filter(n => n.userId == state.user.id && !n.read).length;
 const signedToday = c => db.attendance.find(x => x.studentId == state.user.id && x.classId == c.id && x.date == day(0));
@@ -353,7 +354,7 @@ const shell = content => `
       </nav>
 
       <div class="account">
-        <span class="avatar">${initials(displayName(state.user))}</span>
+        ${avatar(state.user, displayName(state.user))}
         <span class="account-text">
           ${esc(displayName(state.user))}
           <small>${state.user.role}</small>
@@ -575,7 +576,7 @@ const classCard = c => {
           ${title ? `<span>${esc(title)}</span>` : ''}
         </span>
         <span class="ccard-body">
-          ${who ? `<span class="ccard-prof"><span class="avatar">${esc(initials(who))}</span>${esc(prof ? displayName(prof) : who)}</span>` : ''}
+          ${who ? `<span class="ccard-prof">${avatar(prof, who)}${esc(prof ? displayName(prof) : who)}</span>` : ''}
           <span class="ccard-sched">${(c.dayText || '').split(' ').filter(Boolean).map(d => `<i>${esc(d)}</i>`).join('')}${c.start != null ? `<span>${fmtMin(c.start)} – ${fmtMin(c.end)}</span>` : ''}${c.room ? `<span>· ${esc(c.room)}</span>` : ''}</span>
           ${next ? `<span class="ccard-next ${next.startsWith('Today') || next.startsWith('Happening') ? 'today' : ''}">${icon('clock', 16)} ${next}</span>` : ''}
         </span>
@@ -752,13 +753,13 @@ const classDetailView = () => {
       ${user(c.teacherId) ? `
         <div class="group-label">Professor</div>
         <section class="panel">
-          <div class="person prof"><span class="avatar">${esc(initials(user(c.teacherId).name))}</span>${esc(displayName(user(c.teacherId)))}</div>
+          <div class="person prof">${avatar(user(c.teacherId))}${esc(displayName(user(c.teacherId)))}</div>
         </section>` : ''}
 
       <div class="group-label">Classmates · ${studentsOf(c).length}</div>
       <section class="panel people">
         ${studentsOf(c).sort((x, y) => x.name.localeCompare(y.name)).map(u => `
-          <div class="person"><span class="avatar">${esc(initials(u.name))}</span>${esc(u.name)}${u.id == state.user.id ? '<small>You</small>' : ''}</div>`).join('')}
+          <div class="person">${avatar(u)}${esc(u.name)}${u.id == state.user.id ? '<small>You</small>' : ''}</div>`).join('')}
       </section>`}
 
     ${teacher ? `
@@ -1061,13 +1062,43 @@ const usersView = () => `
   </section>
 `;
 
+const ACCENTS = ['#5b4785', '#2f5f9e', '#1f7a73', '#a33a5a', '#b0482a', '#2e7d4f'];
+const THEMES = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
+
 const profileView = () => `
   <header class="page-head">
     <div>
       <h1>Profile</h1>
-      <p class="sub">Your account details.</p>
+      <p class="sub">Your account details and how AcadTrack looks for you.</p>
     </div>
   </header>
+
+  <section class="card profile-photo">
+    ${avatar(state.user, displayName(state.user), 'big')}
+    <div>
+      <div class="label">Profile photo</div>
+      <div class="photo-actions">
+        <label class="btn">${icon('upload', 18)} ${state.user.avatar ? 'Change photo' : 'Upload photo'}<input id="avatarFile" type="file" accept="image/*" hidden></label>
+        ${state.user.avatar ? '<button class="btn" data-action="removePhoto">Remove</button>' : ''}
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="label">Theme</div>
+    <div class="seg">
+      ${THEMES.map(([v, l]) => `<label><input type="radio" name="theme" value="${v}"${(state.user.theme || 'system') === v ? ' checked' : ''}><span>${l}</span></label>`).join('')}
+    </div>
+    <hr class="divider">
+    <fieldset class="swatches">
+      <legend>Accent color</legend>
+      ${ACCENTS.map((c, i) => `
+        <label style="--tone:${c};--tone-bg:${c}">
+          <input type="radio" name="accent" value="${i}"${(state.user.accent || 0) === i ? ' checked' : ''}>
+          <span aria-label="Accent ${i + 1}"></span>
+        </label>`).join('')}
+    </fieldset>
+  </section>
 
   <section class="card">
     <div class="label">Name</div>
@@ -1365,7 +1396,29 @@ const modalHtml = () => {
   }
 };
 
+const darkQuery = matchMedia('(prefers-color-scheme: dark)');
+
+const applyLook = () => {
+  const t = state.user?.theme;
+  const dark = t === 'dark' || (t !== 'light' && darkQuery.matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  document.documentElement.dataset.accent = state.user?.accent || 0;
+  document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+};
+
+darkQuery.addEventListener('change', applyLook);
+
+const squarePhoto = async file => {
+  const img = await createImageBitmap(file);
+  const s = Math.min(img.width, img.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = 256;
+  canvas.getContext('2d').drawImage(img, (img.width - s) / 2, (img.height - s) / 2, s, s, 0, 0, 256, 256);
+  return canvas.toDataURL('image/jpeg', 0.85);
+};
+
 const render = () => {
+  applyLook();
   document.getElementById('app').innerHTML = state.user ? shell(PAGES[state.view]()) + modalHtml() : loginView();
 
   if (!state.user) {
@@ -1870,6 +1923,23 @@ const actions = {
     await api('POST', `/users/${id}/toggle`, {});
   },
 
+  async saveLook() {
+    await api('PUT', '/profile', {
+      theme: document.querySelector('input[name="theme"]:checked').value,
+      accent: +document.querySelector('input[name="accent"]:checked').value
+    });
+  },
+
+  async savePhoto(photo) {
+    await api('PUT', '/profile/photo', { photo });
+    toast('Profile photo updated');
+  },
+
+  async removePhoto() {
+    await api('PUT', '/profile/photo', { photo: null });
+    toast('Profile photo removed');
+  },
+
   async runReminders() {
     const r = await api('POST', '/reminders/run', {});
     toast(`${r.sent} reminder(s) sent`);
@@ -1949,6 +2019,22 @@ document.addEventListener('change', e => {
     const reader = new FileReader();
     reader.onload = () => (state.pendingFile = { name: file.name, data: reader.result });
     reader.readAsDataURL(file);
+    return;
+  }
+
+  if (e.target.name === 'theme' || e.target.name === 'accent') {
+    state.user.theme = document.querySelector('input[name="theme"]:checked').value;
+    state.user.accent = +document.querySelector('input[name="accent"]:checked').value;
+    applyLook();
+    run('saveLook');
+    return;
+  }
+
+  if (e.target.id === 'avatarFile') {
+    const file = e.target.files[0];
+    if (file) squarePhoto(file)
+      .then(photo => run('savePhoto', photo))
+      .catch(() => toast('Could not read that photo. Try a JPG or PNG.', true));
     return;
   }
 

@@ -2173,10 +2173,10 @@ a.btn {
 [data-theme="light"]:not([data-accent="0"]) { --accent-soft: color-mix(in srgb, var(--accent) 14%, #fff); }
 
 [data-theme="dark"] {
-  --bg: #121216;
-  --panel: rgba(30, 30, 37, 0.85);
-  --field: #25252d;
-  --line: #33333d;
+  --bg: #0c0c10;
+  --panel: rgba(33, 33, 42, 0.94);
+  --field: #2b2b35;
+  --line: #3a3a46;
   --text: #ececf1;
   --muted: #a3a3ad;
   --faint: #6f6f79;
@@ -2188,7 +2188,7 @@ a.btn {
   --green-bg: rgba(107, 207, 148, 0.14);
   --amber: #e8b05a;
   --amber-bg: rgba(232, 176, 90, 0.15);
-  --ring: #121216;
+  --ring: #0c0c10;
 }
 
 [data-theme="dark"] body {
@@ -2197,6 +2197,15 @@ a.btn {
     radial-gradient(45% 40% at 62% 100%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 70%),
     var(--bg);
   background-attachment: fixed;
+}
+
+[data-theme="dark"] .panel,
+[data-theme="dark"] .card,
+[data-theme="dark"] .class-card,
+[data-theme="dark"] .stat,
+[data-theme="dark"] .ccard,
+[data-theme="dark"] .empty-state {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 [data-theme="dark"] .login-card,

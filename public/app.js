@@ -929,15 +929,21 @@ const attendanceView = () => {
     </section>`;
 };
 
-const ring = r => {
-  const len = 2 * Math.PI * 42;
-  return `
-    <svg class="ring ${rateLevel(r)}" viewBox="0 0 100 100" role="img" aria-label="Attendance ${r === null ? 'not started' : r + '%'}">
-      <circle cx="50" cy="50" r="42"/>
-      <circle class="fill" cx="50" cy="50" r="42" stroke-dasharray="${len * (r || 0) / 100} ${len}"/>
-      <text x="50" y="50">${r === null ? '—' : r + '%'}</text>
-    </svg>`;
+const statCard = (tone, ic, n, label, detail, view) => `
+  <button class="stat" style="--tone:${tone}" data-action="nav" data-id="${view}">
+    <span class="stat-top"><span class="tile">${icon(ic, 18)}</span>${label}</span>
+    <b>${n}</b>
+    <span class="stat-detail">${detail}</span>
+  </button>`;
+
+const classChips = () => {
+  const list = myClasses();
+  return list.length ? list.slice(0, 3).map(c => `<i>${esc(shortCode(c))}</i>`).join('') + (list.length > 3 ? `<i>+${list.length - 3}</i>` : '') : 'No classes yet';
 };
+
+const SUN = '<svg class="sky" viewBox="0 0 150 150" aria-hidden="true"><g class="rays"><path d="M75 6v18M75 126v18M6 75h18M126 75h18M26 26l13 13M111 111l13 13M26 124l13-13M111 39l13-13"/></g><circle cx="75" cy="75" r="34"/></svg>';
+const MOON = '<svg class="sky moon" viewBox="0 0 150 150" aria-hidden="true"><path d="M98 112a44 44 0 1 1-30-80 36 36 0 0 0 30 80z"/></svg>';
+const WAVES = '<svg class="waves" viewBox="0 0 960 90" preserveAspectRatio="none" aria-hidden="true"><path d="M0 50C160 10 300 90 480 55S800 20 960 45V90H0Z"/><path d="M0 70C200 40 340 95 520 72S820 50 960 68V90H0Z"/></svg>';
 
 const statusToday = c => {
   const signed = signedToday(c);
@@ -985,23 +991,35 @@ const homeView = () => {
   const students = new Set(myClasses().flatMap(c => studentsOf(c).map(u => u.id))).size;
   const pendingCount = myClasses().reduce((n, c) => n + pendingOf(c).length, 0);
 
+  const unread = db.notifications.filter(n => n.userId == state.user.id && !n.read).sort((x, y) => y.at.localeCompare(x.at));
+  const myMats = db.materials.filter(m => myClasses().some(c => c.id == m.classId)).sort((x, y) => y.posted.localeCompare(x.posted));
+
   const stats = teacher
-    ? [['book', myClasses().length, 'Classes'], ['user', students, 'Students'], ['clock', pendingCount, 'Pending'], ['file', db.materials.filter(m => myClasses().some(c => c.id == m.classId)).length, 'Materials']]
-    : [['book', myClasses().length, 'Classes'], ['clock', today.length, 'Today'], ['bell', unreadCount(), 'Unread']];
+    ? [
+        statCard('var(--accent)', 'book', myClasses().length, 'Classes', classChips(), 'classes'),
+        statCard('#1f7a73', 'user', students, 'Students', `<small>Across ${myClasses().length} class${myClasses().length === 1 ? '' : 'es'}</small>`, 'classes'),
+        statCard('#a33a5a', 'clock', pendingCount, 'Pending', '<small>Invited, not signed in yet</small>', 'classes'),
+        statCard('#2f5f9e', 'file', myMats.length, 'Materials', myMats[0] ? `<span>${esc(myMats[0].title)}</span><small>${formatDate(myMats[0].posted)}</small>` : '<small>Nothing posted yet</small>', 'classes')
+      ]
+    : [
+        statCard('var(--accent)', 'book', myClasses().length, 'Classes', classChips(), 'classes'),
+        statCard('#1f7a73', 'clock', today.length, 'Today', today.length ? today.slice(0, 2).map(c => `<span>${esc(shortCode(c))} · ${fmtMin(c.start)}</span>`).join('') : '<small>Free day</small>', 'attendance'),
+        statCard('#a33a5a', 'bell', unread.length, 'Unread', unread[0] ? `<span>${esc(unread[0].title)}</span><small>${formatStamp(unread[0].at)}</small>` : '<small>You’re all caught up</small>', 'notifications'),
+        statCard('var(--green)', 'check', rate === null ? '—' : rate + '%', 'Attendance', `<span class="stat-bar"><i class="${rateLevel(rate)}" style="width:${rate || 0}%"></i></span><small>${history.filter(a => a.status === 'Present').length} of ${history.length} present</small>`, 'attendance')
+      ];
 
   return `
     <section class="hero">
+      ${WAVES}
+      ${hour < 18 ? SUN : MOON}
       <div>
         <small>${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</small>
         <h1>${hello}, ${esc(firstName(state.user.name))}</h1>
-        <p>${today.length ? `You have ${today.length} class${today.length === 1 ? '' : 'es'} today${today[0] ? `, starting ${fmtMin(today[0].start)}` : ''}.` : 'No classes today. Enjoy the break.'}</p>
+        <p>${today.length ? `You have ${today.length} class${today.length === 1 ? '' : 'es'} today, starting ${fmtMin(today[0].start)}.` : 'No classes today. Enjoy the break.'}</p>
       </div>
-      ${teacher ? '' : ring(rate)}
     </section>
 
-    <section class="stats cols-${stats.length}">
-      ${stats.map(([ic, n, label]) => `<div class="stat"><span class="tile">${icon(ic, 20)}</span><b>${n}</b><span>${label}</span></div>`).join('')}
-    </section>
+    <section class="stats">${stats.join('')}</section>
 
     <div class="home-grid">
       <div>

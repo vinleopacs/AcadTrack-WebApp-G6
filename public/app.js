@@ -1417,8 +1417,15 @@ const squarePhoto = async file => {
   return canvas.toDataURL('image/jpeg', 0.85);
 };
 
+const saveSpot = () => {
+  const id = state.view === 'detail' ? state.selected : state.view === 'classDetail' ? state.selectedClass : '';
+  const hash = state.user ? `#${state.view}${id ? '/' + id : ''}` : '';
+  if (location.hash !== hash) history.replaceState(null, '', hash || location.pathname);
+};
+
 const render = () => {
   applyLook();
+  saveSpot();
   document.getElementById('app').innerHTML = state.user ? shell(PAGES[state.view]()) + modalHtml() : loginView();
 
   if (!state.user) {
@@ -1528,7 +1535,13 @@ const refresh = async () => {
     state.user = data.user;
 
     if (first) {
-      state.view = data.user.role === 'Admin' ? 'users' : 'home';
+      const [view, id] = location.hash.slice(1).split('/');
+      const admin = data.user.role === 'Admin';
+      const ok = view in PAGES && (admin ? NAV.Admin.some(n => n[0] === view) : view !== 'users')
+        && (view !== 'detail' || assignment(id)) && (view !== 'classDetail' || klass(id));
+      state.view = ok ? view : admin ? 'users' : 'home';
+      if (view === 'detail') state.selected = +id;
+      if (view === 'classDetail') state.selectedClass = +id;
       state.seen = new Set(db.notifications.map(n => n.id));
     }
 

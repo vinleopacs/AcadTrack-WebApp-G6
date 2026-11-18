@@ -1062,7 +1062,7 @@ const usersView = () => `
   </section>
 `;
 
-const ACCENTS = ['#5b4785', '#2f5f9e', '#1f7a73', '#a33a5a', '#b0482a', '#2e7d4f'];
+const ACCENTS = ['#5b4785', '#4a4fa8', '#3d5ab0', '#6a3fa6', '#7b3d9c', '#8c4a94'];
 const THEMES = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
 
 const profileView = () => `

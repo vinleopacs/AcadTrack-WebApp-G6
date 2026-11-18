@@ -12,7 +12,7 @@ const setup = async () => {
   const password = process.env.ADMIN_PASSWORD;
   const admin = email && await users.findByEmail(email);
 
-  if (admin && admin.role === 'Admin' && password) {
+  if (admin && admin.role === 'Admin' && password && !admin.passwordHash) {
     await users.setPassword(admin.id, await bcrypt.hash(password, 10));
   } else if (!(await users.countAdmins())) {
     if (!email || !password) {

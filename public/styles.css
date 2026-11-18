@@ -1323,6 +1323,11 @@ main {
   cursor: pointer;
 }
 
+.btn.block + .link-btn {
+  display: block;
+  margin: 14px auto 0;
+}
+
 .auth-or {
   display: flex;
   align-items: center;

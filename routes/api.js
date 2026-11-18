@@ -23,6 +23,8 @@ router.use(jsonOnly);
 router.get('/config', auth.config);
 router.post('/login', loginLimit, wrap(auth.adminLogin));
 router.post('/auth/google', loginLimit, wrap(auth.googleLogin));
+router.post('/password/forgot', loginLimit, wrap(auth.forgotPassword));
+router.post('/password/reset', loginLimit, wrap(auth.resetPassword));
 router.post('/logout', auth.logout);
 
 router.get('/state', requireLogin, wrap(state.getState));

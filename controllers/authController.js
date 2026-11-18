@@ -4,7 +4,7 @@ const { OAuth2Client } = require('google-auth-library');
 const users = require('../models/users');
 const { claimInvites } = require('./classController');
 const { invalid, forbidden } = require('../utils/errors');
-const { sendMail } = require('../utils/mail');
+const { sendMail, resetEmail } = require('../utils/mail');
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const DOMAIN = (process.env.ALLOWED_DOMAIN || 'usc.edu.ph').toLowerCase();
@@ -85,14 +85,10 @@ const forgotPassword = async (req, res) => {
 
   if (user && user.active && user.passwordHash) {
     const token = crypto.randomBytes(32).toString('hex');
-    const link = `${process.env.APP_URL || `${req.protocol}://${req.get('host')}`}/?reset=${token}`;
+    const base = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
 
     await users.setResetToken(user.id, hash(token));
-    await sendMail(user.email, 'Reset your AcadTrack password', `
-      <p>Hi ${user.name.replace(/[<>&"]/g, '')},</p>
-      <p>Click the link below to set a new AcadTrack password. It expires in 30 minutes.</p>
-      <p><a href="${link}">${link}</a></p>
-      <p>If you didn't ask for this, you can ignore this email.</p>`);
+    await sendMail(user.email, 'Reset your AcadTrack password', resetEmail(user.name.replace(/[<>&"]/g, ''), `${base}/?reset=${token}`, base));
   }
 
   res.json({ ok: true });

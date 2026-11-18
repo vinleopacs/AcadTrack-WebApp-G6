@@ -2437,6 +2437,72 @@ a.btn {
   display: none;
 }
 
+.login-hero,
+.login::before {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  background: linear-gradient(120deg, #3d2f5e, #5b4785, #7b5fb5, #4a3a78, #2f2450);
+  background-size: 300% 300%;
+  animation: login-flow 16s ease-in-out infinite;
+}
+
+.login-hero::before,
+.login-hero::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.55;
+  animation: login-float 18s ease-in-out infinite alternate;
+}
+
+.login-hero::before {
+  top: -120px;
+  left: -80px;
+  background: #a98be0;
+}
+
+.login-hero::after {
+  right: -120px;
+  bottom: -100px;
+  background: #e7b8d8;
+  animation-duration: 22s;
+  animation-direction: alternate-reverse;
+}
+
+@keyframes login-flow {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes login-float {
+  0% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(120px, 80px) scale(1.15); }
+  100% { transform: translate(40px, 200px) scale(0.9); }
+}
+
+@media (max-width: 899px) {
+  .login::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-hero,
+  .login::before,
+  .login-hero::before,
+  .login-hero::after {
+    animation: none;
+  }
+}
+
 .login-pill {
   display: inline-block;
   margin-bottom: 14px;
@@ -2471,7 +2537,6 @@ a.btn {
     flex-direction: column;
     justify-content: space-between;
     padding: 56px;
-    background: linear-gradient(160deg, var(--accent), #3d2f5e);
     color: #fff;
   }
 

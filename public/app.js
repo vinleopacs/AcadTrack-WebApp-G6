@@ -1,4 +1,3 @@
-
 const pad = n => String(n).padStart(2, '0');
 const localDate = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const day = n => localDate(new Date(Date.now() + n * 864e5));
@@ -953,6 +952,21 @@ const firstName = n => (n.includes(',') ? n.split(',')[1] : n).trim().split(' ')
 
 const fmtWait = m => (m >= 60 ? `${Math.floor(m / 60)}h ${m % 60 ? (m % 60) + 'm' : ''}`.trim() : `${m}m`);
 
+const weekStrip = (sel, list) => {
+  const off = (new Date().getDay() + 6) % 7;
+  return `<div class="week">${[0, 1, 2, 3, 4, 5, 6].map(i => {
+    const n = i - off;
+    const d = new Date(Date.now() + n * 864e5);
+    const has = list.some(c => c.days && c.days.includes(d.getDay()));
+    return `<button class="${n === sel ? 'on' : ''} ${n === 0 ? 'today' : ''}" data-action="pickDay" data-id="${n}"><small>${DAY_NAMES[d.getDay()]}</small><b>${d.getDate()}</b><i class="${has ? 'has' : ''}"></i></button>`;
+  }).join('')}</div>`;
+};
+
+const pastStatus = (c, n) => {
+  const rec = db.attendance.find(a => a.studentId == state.user.id && a.classId == c.id && a.date == day(n));
+  return rec ? attPill(rec.status) : '<span class="att later">Not signed</span>';
+};
+
 const homeView = () => {
   const teacher = state.user.role === 'Teacher';
   const hour = new Date().getHours();
@@ -960,6 +974,10 @@ const homeView = () => {
   const today = (teacher ? myClasses() : scheduleClasses())
     .filter(c => c.days && c.days.includes(new Date().getDay()))
     .sort((x, y) => x.start - y.start);
+  const list = teacher ? myClasses() : scheduleClasses();
+  const sel = state.homeDay ?? 0;
+  const shown = new Date(Date.now() + sel * 864e5);
+  const picked = list.filter(c => c.days && c.days.includes(shown.getDay())).sort((x, y) => x.start - y.start);
   const history = db.attendance.filter(a => a.studentId == state.user.id);
   const rate = rateOf(history);
   const notes = db.notifications.filter(n => n.userId == state.user.id).sort((x, y) => y.at.localeCompare(x.at)).slice(0, 4);
@@ -987,14 +1005,15 @@ const homeView = () => {
 
     <div class="home-grid">
       <div>
-        <div class="group-label">Today's schedule</div>
+        <div class="group-label">${sel === 0 ? "Today's schedule" : shown.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}${sel === 0 ? '' : '<button class="link-btn" data-action="pickDay" data-id="0">Back to today</button>'}</div>
+        ${weekStrip(sel, list)}
         <section class="panel timeline">
-          ${today.length ? today.map(c => `
-            <div class="slot">
+          ${picked.length ? picked.map(c => `
+            <div class="slot" style="${toneStyle(c)}">
               <span class="time">${fmtMin(c.start)}<small>${fmtMin(c.end)}</small></span>
               <span class="info"><b>${esc(c.name)}</b><small>${esc(c.room || 'No room')}${teacher ? ` · ${studentsOf(c).length} students` : ''}</small></span>
-              ${teacher ? `<button class="btn soft" data-action="openClassDetail" data-id="${c.id}">Open</button>` : `<button class="slot-status" data-action="openAttendance" data-id="${c.id}">${statusToday(c)}</button>`}
-            </div>`).join('') : `<p class="empty">${teacher ? 'No classes today.' : scheduleClasses().length ? 'No classes today.' : 'Upload your study load on Attendance to see your schedule here.'}</p>`}
+              ${teacher ? `<button class="btn soft" data-action="openClassDetail" data-id="${c.id}">Open</button>` : sel === 0 ? `<button class="slot-status" data-action="openAttendance" data-id="${c.id}">${statusToday(c)}</button>` : sel < 0 ? pastStatus(c, sel) : ''}
+            </div>`).join('') : `<p class="empty">${teacher ? 'No classes this day.' : scheduleClasses().length ? 'No classes this day.' : 'Upload your study load on Attendance to see your schedule here.'}</p>`}
         </section>
 
         ${teacher ? '' : `
@@ -1620,6 +1639,11 @@ const actions = {
   nav(view) {
     state.view = view;
     state.modal = null;
+    state.homeDay = 0;
+  },
+
+  pickDay(n) {
+    state.homeDay = +n;
   },
 
   open(id) {
@@ -1959,7 +1983,7 @@ const actions = {
   }
 };
 
-const LOCAL = ['openViewer', 'copyCode', 'openEditClass', 'openEditMaterial', 'showForgot', 'hideForgot', 'nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'addLoadRow', 'removeLoadRow', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser', 'openSetPassword'];
+const LOCAL = ['pickDay', 'openViewer', 'copyCode', 'openEditClass', 'openEditMaterial', 'showForgot', 'hideForgot', 'nav', 'open', 'close', 'openPost', 'openEdit', 'openDelete', 'openAddClass', 'openLoad', 'previewLoad', 'addLoadRow', 'removeLoadRow', 'calMonth', 'openAttendance', 'openNewClass', 'openRoster', 'openClassDetail', 'openMaterial', 'openAddUser', 'openSetPassword'];
 
 let running = false;
 

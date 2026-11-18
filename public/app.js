@@ -337,12 +337,27 @@ const authBody = () => state.resetToken ? `
     </div>
     <button class="btn primary block" data-action="login">Sign in</button>
     ${googleBlock()}
-    <p class="auth-switch">Students and professors: no password needed, just sign in with your @${esc(config.domain)} Google account.</p>`;
+    <p class="auth-switch wide-only">Student or professor? Just use <b>Sign in with Google</b> with your @${esc(config.domain)} account.</p>
+    <div class="login-hint narrow-only">No password? Sign in with your <b>@${esc(config.domain)}</b> Google account.</div>`;
 
 const loginView = () => `
   <div class="login">
+    <div class="login-hero">
+      <div class="login-brand">${logo()}</div>
+      <div>
+        <h2>Every deadline, class and material in one place.</h2>
+        <p>For USC students and professors.</p>
+        <ul>
+          <li>Track assignments and due dates</li>
+          <li>Sign attendance from your phone</li>
+          <li>Get class materials the moment they're posted</li>
+        </ul>
+      </div>
+      <small>University of San Carlos · Talamban</small>
+    </div>
     <div class="login-card">
       <div class="login-brand">${logo()}</div>
+      <span class="login-pill">University of San Carlos</span>
       ${authBody()}
     </div>
   </div>`;

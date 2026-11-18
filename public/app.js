@@ -311,12 +311,22 @@ const NAV = {
 
 const googleBlock = () => (config.googleClientId ? '<div class="auth-or"><span>or</span></div><div id="googleBtn" class="google-btn"></div>' : '');
 
-const authBody = () => state.forgot ? `
+const authBody = () => state.resetToken ? `
+    <h1 class="auth-title">Set a new password</h1>
+    <p class="auth-sub">Enter a new password for your AcadTrack account.</p>
+    ${field('newPassword', 'New password', { type: 'password', placeholder: 'At least 8 characters', max: 72 })}
+    ${field('confirmPassword', 'Confirm password', { type: 'password', placeholder: 'Type it again', max: 72 })}
+    <button class="btn primary block" data-action="resetPassword">Save password</button>
+    <button class="link-btn" data-action="hideForgot">Back to sign in</button>` : state.forgot === 'sent' ? `
+    <h1 class="auth-title">Check your email</h1>
+    <p class="auth-sub">If that email has an AcadTrack password, we sent a link to reset it. The link expires in 30 minutes.</p>
+    <button class="btn primary block" data-action="hideForgot">Back to sign in</button>` : state.forgot ? `
     <h1 class="auth-title">Forgot password</h1>
-    <p class="auth-sub">Students and professors don't have an AcadTrack password. Sign in with your @${esc(config.domain)} Google account instead.</p>
-    <p class="auth-sub">Forgot your school Google password? Use "Forgot password?" on the Google sign-in screen or ask the school IT office.</p>
-    <p class="auth-sub">Admin: change ADMIN_PASSWORD in the server settings and restart the app. The new password works right away.</p>
-    <button class="btn primary block" data-action="hideForgot">Back to sign in</button>` : `
+    <p class="auth-sub">Enter your email and we'll send you a link to set a new password.</p>
+    ${field('email', 'Email', { type: 'email', placeholder: '22100001@' + config.domain })}
+    <button class="btn primary block" data-action="sendReset">Send reset link</button>
+    <button class="link-btn" data-action="hideForgot">Back to sign in</button>
+    <p class="auth-switch">Signed in with Google before? You don't have an AcadTrack password. Use Sign in with Google, or "Forgot password?" on Google's screen.</p>` : `
     <h1 class="auth-title">Sign in</h1>
     <p class="auth-sub">Welcome back. Use your school email.</p>
     ${field('email', 'Email', { type: 'email', placeholder: '22100001@' + config.domain })}
@@ -1642,6 +1652,26 @@ const actions = {
 
   hideForgot() {
     state.forgot = false;
+    state.resetToken = null;
+    history.replaceState(null, '', '/');
+  },
+
+  async sendReset() {
+    const email = value('email').trim().toLowerCase();
+
+    required(email);
+    await api('POST', '/password/forgot', { email });
+    state.forgot = 'sent';
+  },
+
+  async resetPassword() {
+    const password = value('newPassword');
+
+    required(password);
+    if (password !== value('confirmPassword')) throw new Invalid('Passwords do not match.');
+    await api('POST', '/password/reset', { token: state.resetToken, password });
+    actions.hideForgot();
+    toast('Password saved. You can sign in now.');
   },
 
   async google(credential) {
@@ -2134,11 +2164,13 @@ document.addEventListener('change', e => {
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !state.user && e.target.closest('.login-card input')) {
-    run('login');
+    run(state.resetToken ? 'resetPassword' : state.forgot ? 'sendReset' : 'login');
   }
 });
 
 (async () => {
+  state.resetToken = new URLSearchParams(location.search).get('reset');
+
   try {
     config = await api('GET', '/config');
   } catch {}

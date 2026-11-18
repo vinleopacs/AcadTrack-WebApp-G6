@@ -1,12 +1,16 @@
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { OAuth2Client } = require('google-auth-library');
 const users = require('../models/users');
 const { claimInvites } = require('./classController');
 const { invalid, forbidden } = require('../utils/errors');
+const { sendMail } = require('../utils/mail');
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const DOMAIN = (process.env.ALLOWED_DOMAIN || 'usc.edu.ph').toLowerCase();
 const google = new OAuth2Client(CLIENT_ID);
+
+const hash = token => crypto.createHash('sha256').update(token).digest('hex');
 
 const startSession = async (req, user, remember) => {
   await claimInvites(user);
@@ -73,6 +77,38 @@ const googleLogin = async (req, res) => {
   res.json({ ok: true });
 };
 
+const forgotPassword = async (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase();
+  if (!email) throw invalid('This is a required field.');
+
+  const user = await users.findByEmail(email);
+
+  if (user && user.active && user.passwordHash) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const link = `${process.env.APP_URL || `${req.protocol}://${req.get('host')}`}/?reset=${token}`;
+
+    await users.setResetToken(user.id, hash(token));
+    await sendMail(user.email, 'Reset your AcadTrack password', `
+      <p>Hi ${user.name.replace(/[<>&"]/g, '')},</p>
+      <p>Click the link below to set a new AcadTrack password. It expires in 30 minutes.</p>
+      <p><a href="${link}">${link}</a></p>
+      <p>If you didn't ask for this, you can ignore this email.</p>`);
+  }
+
+  res.json({ ok: true });
+};
+
+const resetPassword = async (req, res) => {
+  const password = String(req.body.password || '');
+  const user = await users.findByResetToken(hash(String(req.body.token || '')));
+
+  if (!user) throw invalid('This reset link is invalid or has expired. Please request a new one.');
+  if (password.length < 8) throw invalid('Password must be at least 8 characters.');
+
+  await users.setPassword(user.id, await bcrypt.hash(password, 10));
+  res.json({ ok: true });
+};
+
 const logout = (req, res) => {
   req.session.destroy(() => {
     res.clearCookie('acadtrack.sid');
@@ -80,4 +116,4 @@ const logout = (req, res) => {
   });
 };
 
-module.exports = { config, adminLogin, googleLogin, logout };
+module.exports = { config, adminLogin, googleLogin, forgotPassword, resetPassword, logout };

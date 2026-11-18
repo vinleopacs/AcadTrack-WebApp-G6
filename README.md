@@ -60,7 +60,9 @@ The tables are created automatically on the first start.
 | `SESSION_SECRET` | Any long random text; keeps logins secure |
 | `GOOGLE_CLIENT_ID` | OAuth Client ID from Google Cloud |
 | `ALLOWED_DOMAIN` | School email domain allowed to sign in (default `usc.edu.ph`) |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Admin account, created on first start; change `ADMIN_PASSWORD` and restart to reset it |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD` | Admin account, created on first start; use **Forgot password?** to change it later |
+| `BREVO_API_KEY`, `MAIL_FROM` | [Brevo](https://www.brevo.com/) API key and a verified sender email, used to send password reset links. If not set, the link is printed in the server log |
+| `APP_URL` | Public site address used in reset links (e.g. `https://acadtrack-db30.onrender.com`) |
 | `DEMO_MODE` | `true` adds DEMO 101 for testing attendance |
 | `NODE_ENV` | `production` on the live server |
 
@@ -70,6 +72,7 @@ The tables are created automatically on the first start.
 - **Professors** must be added by the admin (Users → Add user → Teacher) with a password. They can sign in with that email and password, or with Google.
 - **Students** can be added by the admin the same way, or just sign in with Google; any `@usc.edu.ph` account becomes a Student on first sign-in.
 - The admin can set a new password for any professor or student with **Set password** on the Users page.
+- Anyone with a password can use **Forgot password?** on the sign-in page to get a reset link by email (valid for 30 minutes).
 
 ## Contributors
 
